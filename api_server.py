@@ -2,6 +2,14 @@
 Servidor API Python para integração com a interface web Next.js
 Execute: python api_server.py
 """
+import sys
+import io
+
+# Configurar encoding UTF-8 para stdout/stderr (resolve problema com emojis no Windows)
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel

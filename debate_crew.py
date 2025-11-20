@@ -4,6 +4,13 @@ Módulo com a lógica de orquestração do debate
 from crewai import Crew, Process, Task, Agent
 from agents import obter_agente, AGENTES_DISPONIVEIS
 from typing import List, Dict, Optional, Any
+import sys
+import io
+
+# Configurar encoding UTF-8 para stdout/stderr (resolve problema com emojis no Windows)
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 import time
 
 class DebateCrew:
@@ -154,9 +161,9 @@ class DebateCrew:
             "agente": "Moderador"
         })
         
-        print("🔄 Gerando síntese final do debate com agente facilitador...")
+        print("[DEBATE] Gerando sintese final do debate com agente facilitador...")
         sintese = self.gerar_sintese_com_agente()
-        print(f"✅ Síntese gerada: {len(sintese)} caracteres")
+        print(f"[DEBATE] Sintese gerada: {len(sintese)} caracteres")
         
         historico.append({
             "tipo": "sintese_conteudo",
@@ -178,9 +185,9 @@ class DebateCrew:
             facilitador = criar_facilitador()
             
             # Compilar todo o debate
-            print("📝 Compilando histórico do debate...")
+            print("[SINTESE] Compilando historico do debate...")
             debate_completo = self.obter_historico_formatado()
-            print(f"📊 Histórico compilado: {len(debate_completo)} caracteres")
+            print(f"[SINTESE] Historico compilado: {len(debate_completo)} caracteres")
             
             # Criar task para o facilitador
             task_sintese = Task(
@@ -207,7 +214,7 @@ class DebateCrew:
             )
             
             # Executar task com CrewAI
-            print("🚀 Executando task de síntese com CrewAI...")
+            print("[SINTESE] Executando task de sintese com CrewAI...")
             crew = Crew(
                 agents=[facilitador],
                 tasks=[task_sintese],
@@ -216,7 +223,7 @@ class DebateCrew:
             )
             
             resultado = crew.kickoff()
-            print(f"📦 Resultado recebido do CrewAI: {type(resultado)}")
+            print(f"[SINTESE] Resultado recebido do CrewAI: {type(resultado)}")
             
             # Extrair conteúdo do resultado
             if hasattr(resultado, 'raw'):
@@ -226,12 +233,12 @@ class DebateCrew:
             else:
                 sintese_texto = str(resultado)
             
-            print(f"✅ Síntese extraída: {len(sintese_texto)} caracteres")
+            print(f"[SINTESE] Sintese extraida: {len(sintese_texto)} caracteres")
             return sintese_texto
             
         except Exception as e:
             error_msg = f"Erro ao gerar síntese: {str(e)}"
-            print(f"❌ {error_msg}")
+            print(f"[ERRO] {error_msg}")
             import traceback
             traceback.print_exc()
             return error_msg
