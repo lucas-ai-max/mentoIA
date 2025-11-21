@@ -4,19 +4,20 @@ Módulo com a lógica de orquestração do debate
 from crewai import Crew, Process, Task, Agent
 from agents import obter_agente, AGENTES_DISPONIVEIS
 from typing import List, Dict, Optional, Any
-import sys
-import io
-
-# Configurar encoding UTF-8 para stdout/stderr (resolve problema com emojis no Windows)
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 import time
 
 class DebateCrew:
     """Classe para gerenciar debates entre agentes"""
     
-    def __init__(self, nomes_agentes: List[str] = None, pergunta: str = None, agentes_crewai: List[Agent] = None, rag_managers: Optional[Dict[int, Any]] = None):
+    def __init__(
+        self,
+        nomes_agentes: List[str] = None,
+        pergunta: str = None,
+        agentes_crewai: List[Agent] = None,
+        rag_managers: Optional[Dict[int, Any]] = None,
+        contexto_usuario: Optional[List[str]] = None,
+        modo: str = 'debate'
+    ):
         """
         Inicializa o debate
         
@@ -31,6 +32,9 @@ class DebateCrew:
         
         self.pergunta = pergunta
         self.rag_managers = rag_managers or {}  # Dicionário: índice -> RAGManager
+        self.contexto_usuario = contexto_usuario or []
+        self.modo = modo
+        self.should_generate_summary = self.modo == 'sintese'
         
         if agentes_crewai:
             # Modo dinâmico: usar agentes já criados
@@ -57,6 +61,24 @@ class DebateCrew:
             Lista com o histórico do debate
         """
         historico = []
+        if self.should_generate_summary:
+            historico = [{
+                "tipo": "pergunta",
+                "conteudo": self.pergunta,
+                "agente": "Contexto"
+            }] + self._build_history_from_context()
+            self.historico = historico
+            sintese_final = self.gerar_sintese_com_agente()
+            historico.append({
+                "tipo": "sintese_conteudo",
+                "conteudo": sintese_final,
+                "agente": "Facilitador"
+            })
+            self.historico = historico
+            return historico
+        contexto_usuario_block = ""
+        if self.contexto_usuario:
+            contexto_usuario_block = "\nContexto adicional fornecido pelo usuário:\n" + "\n".join(self.contexto_usuario)
         
         # Mensagem inicial com a pergunta
         historico.append({
@@ -93,6 +115,7 @@ class DebateCrew:
                         
                         Contexto do debate até agora:
                         {contexto_anterior}
+                        {contexto_usuario_block}
                         
                         Informações relevantes da sua base de conhecimento:
                         {rag_context}
@@ -110,6 +133,7 @@ class DebateCrew:
                         
                         Contexto do debate até agora:
                         {contexto_anterior}
+                        {contexto_usuario_block}
                         
                         Agora é sua vez de falar. Dê sua opinião sobre a questão, 
                         considerando o que outros participantes já disseram. 
@@ -161,9 +185,9 @@ class DebateCrew:
             "agente": "Moderador"
         })
         
-        print("[DEBATE] Gerando sintese final do debate com agente facilitador...")
+        print("🔄 Gerando síntese final do debate com agente facilitador...")
         sintese = self.gerar_sintese_com_agente()
-        print(f"[DEBATE] Sintese gerada: {len(sintese)} caracteres")
+        print(f"✅ Síntese gerada: {len(sintese)} caracteres")
         
         historico.append({
             "tipo": "sintese_conteudo",
@@ -185,9 +209,16 @@ class DebateCrew:
             facilitador = criar_facilitador()
             
             # Compilar todo o debate
-            print("[SINTESE] Compilando historico do debate...")
+            print("📝 Compilando histórico do debate...")
             debate_completo = self.obter_historico_formatado()
-            print(f"[SINTESE] Historico compilado: {len(debate_completo)} caracteres")
+            print(f"📊 Histórico compilado: {len(debate_completo)} caracteres")
+            contexto_usuario_section = ""
+            if self.contexto_usuario:
+                contexto_usuario_section = (
+                    "CONTEXTO ADICIONAL DO USUÁRIO:\n"
+                    + "\n".join(self.contexto_usuario)
+                    + "\n\n"
+                )
             
             # Criar task para o facilitador
             task_sintese = Task(
@@ -197,7 +228,7 @@ class DebateCrew:
                 PERGUNTA DO DEBATE: {self.pergunta}
                 
                 DEBATE COMPLETO:
-                {debate_completo}
+                {contexto_usuario_section}{debate_completo}
                 
                 Sua tarefa é criar uma síntese profissional que:
                 1. Resuma os principais pontos levantados por cada participante
@@ -214,7 +245,7 @@ class DebateCrew:
             )
             
             # Executar task com CrewAI
-            print("[SINTESE] Executando task de sintese com CrewAI...")
+            print("🚀 Executando task de síntese com CrewAI...")
             crew = Crew(
                 agents=[facilitador],
                 tasks=[task_sintese],
@@ -223,7 +254,7 @@ class DebateCrew:
             )
             
             resultado = crew.kickoff()
-            print(f"[SINTESE] Resultado recebido do CrewAI: {type(resultado)}")
+            print(f"📦 Resultado recebido do CrewAI: {type(resultado)}")
             
             # Extrair conteúdo do resultado
             if hasattr(resultado, 'raw'):
@@ -233,12 +264,12 @@ class DebateCrew:
             else:
                 sintese_texto = str(resultado)
             
-            print(f"[SINTESE] Sintese extraida: {len(sintese_texto)} caracteres")
+            print(f"✅ Síntese extraída: {len(sintese_texto)} caracteres")
             return sintese_texto
             
         except Exception as e:
             error_msg = f"Erro ao gerar síntese: {str(e)}"
-            print(f"[ERRO] {error_msg}")
+            print(f"❌ {error_msg}")
             import traceback
             traceback.print_exc()
             return error_msg
@@ -254,6 +285,17 @@ class DebateCrew:
             return "Este é o início do debate. Seja o primeiro a dar sua opinião."
         
         return "\n".join(contexto[-len(self.agentes):])  # Últimas respostas
+
+    def _build_history_from_context(self) -> List[Dict]:
+        historico = []
+        for entry in self.contexto_usuario:
+            agente, sep, conteudo = entry.partition(': ')
+            historico.append({
+                "tipo": "resposta",
+                "conteudo": conteudo if conteudo else entry,
+                "agente": agente if agente else "Contexto"
+            })
+        return historico
     
     def obter_historico_formatado(self) -> str:
         """Retorna o histórico formatado para exibição (sem síntese)"""

@@ -1,14 +1,116 @@
 """
 Módulo para operações com banco de dados Supabase
 """
-from supabase import Client
-from typing import List, Dict, Optional
+from copy import deepcopy
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from supabase import Client
 from supabase_config import get_supabase_client
+
+DEFAULT_SYSTEM_SETTINGS = {
+    "debate_config": {
+        "max_rounds": 5,
+        "response_timeout": 120,
+        "allow_without_min_agents": False,
+    },
+    "api_limits": {
+        "monthly_tokens": 1000000,
+        "used_tokens": 890000,
+        "alert_threshold": 80,
+    },
+    "security": {
+        "admin_password_hash": None,
+        "enable_2fa": False,
+        "log_activities": True,
+    },
+}
 
 class Database:
     def __init__(self):
         self.supabase: Client = get_supabase_client()
+        self._system_settings_cache = deepcopy(DEFAULT_SYSTEM_SETTINGS)
+        self._settings_table_missing = False
+
+    def get_settings_warning(self) -> Optional[str]:
+        if self._settings_table_missing:
+            return (
+                "A tabela 'system_settings' não existe no Supabase. "
+                "Execute 'supabase_admin_schema.sql' para habilitar a persistência dessas configurações."
+            )
+        return None
+
+    def get_system_settings(self) -> Dict[str, Any]:
+        default_settings = deepcopy(DEFAULT_SYSTEM_SETTINGS)
+        try:
+            result = self.supabase.table("system_settings").select("*").eq("key", "app_settings").execute()
+            if result.data and len(result.data) > 0:
+                stored = result.data[0].get("value", {})
+                merged = self._deep_merge(default_settings, stored)
+                self._system_settings_cache = deepcopy(merged)
+                return merged
+            else:
+                self.set_system_settings(default_settings)
+                return default_settings
+        except Exception as e:
+            if self._handle_missing_settings_table(e):
+                return deepcopy(self._system_settings_cache)
+            print(f"[DB] Erro ao buscar system_settings: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return default_settings
+
+    def set_system_settings(self, settings: Dict[str, Any]) -> None:
+        self._system_settings_cache = deepcopy(settings)
+        if self._settings_table_missing:
+            print("[DB] Ignorando gravação em Supabase porque a tabela 'system_settings' não existe.")
+            return
+
+        try:
+            payload = {
+                "key": "app_settings",
+                "value": settings,
+                "updated_at": datetime.now().isoformat()
+            }
+            self.supabase.table("system_settings").upsert(payload).execute()
+        except Exception as e:
+            if self._handle_missing_settings_table(e):
+                return
+            print(f"[DB] Erro ao salvar system_settings: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
+
+    def update_system_settings(self, overrides: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            current_settings = self.get_system_settings()
+            merged_settings = self._deep_merge(current_settings, overrides)
+            self.set_system_settings(merged_settings)
+            return merged_settings
+        except Exception as e:
+            print(f"[DB] Erro ao atualizar system_settings: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
+
+    @staticmethod
+    def _deep_merge(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
+        merged = deepcopy(base)
+        for key, value in overrides.items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = Database._deep_merge(merged.get(key, {}), value)
+            else:
+                merged[key] = value
+        return merged
+
+    def _handle_missing_settings_table(self, error: Exception) -> bool:
+        message = str(error).lower()
+        if "could not find the table 'public.system_settings'" in message or "relation \"system_settings\" does not exist" in message:
+            if not self._settings_table_missing:
+                print("[DB] AVISO: A tabela 'system_settings' nao existe. Configure-a com supabase_admin_schema.sql.")
+            self._settings_table_missing = True
+            return True
+        return False
     
     def test_connection(self) -> bool:
         """Testa a conexão com o Supabase"""

@@ -36,6 +36,7 @@ Após executar os SQLs, você deve ter as seguintes tabelas:
 - `agents` - Agentes configuráveis
 - `llm_providers` - Provedores de LLM
 - `agent_usage_logs` - Logs de uso dos agentes
+- `system_settings` - Configurações gerais e limites globais do painel
 
 ## 🔌 APIs Disponíveis
 
@@ -83,6 +84,8 @@ Após executar os SQLs, você deve ter as seguintes tabelas:
 - Configurações de debate
 - Limites de API
 - Configurações de segurança
+- `GET /api/admin/settings` - Lê o conjunto atual de configurações gerais
+- `PUT /api/admin/settings` - Atualiza os limites e controles gerais do sistema
 
 ## 🎨 Componentes Criados
 

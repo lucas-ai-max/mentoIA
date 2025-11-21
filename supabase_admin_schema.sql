@@ -57,8 +57,18 @@ CREATE INDEX IF NOT EXISTS idx_agent_usage_logs_agent_id ON agent_usage_logs(age
 CREATE INDEX IF NOT EXISTS idx_agent_usage_logs_debate_id ON agent_usage_logs(debate_id);
 CREATE INDEX IF NOT EXISTS idx_agent_usage_logs_created_at ON agent_usage_logs(created_at DESC);
 
+-- Tabela de configurações gerais do sistema
+CREATE TABLE IF NOT EXISTS system_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(key);
+
 -- Comentários
 COMMENT ON TABLE agents IS 'Armazena configurações dos agentes de debate';
 COMMENT ON TABLE llm_providers IS 'Armazena configurações dos provedores de LLM';
 COMMENT ON TABLE agent_usage_logs IS 'Logs de uso e performance dos agentes';
+COMMENT ON TABLE system_settings IS 'Armazena configurações gerais como limites, segurança e preferências do painel';
 

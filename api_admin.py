@@ -2,10 +2,11 @@
 API de administração para gerenciar agentes e configurações
 """
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from pydantic import BaseModel
-from typing import List, Optional
-from database import Database
+from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional
+from database import Database, DEFAULT_SYSTEM_SETTINGS
 from datetime import datetime
+import hashlib
 import uuid
 import os
 
@@ -70,6 +71,65 @@ class LLMProviderUpdate(BaseModel):
 
 class LLMModelUpdate(BaseModel):
     enabled: bool
+
+class DebateSettings(BaseModel):
+    max_rounds: Optional[int] = Field(None, ge=1, le=10)
+    response_timeout: Optional[int] = Field(None, ge=30, le=300)
+    allow_without_min_agents: Optional[bool] = None
+
+class ApiLimits(BaseModel):
+    monthly_tokens: Optional[int] = Field(None, ge=1)
+    alert_threshold: Optional[int] = Field(None, ge=1, le=100)
+
+class SecuritySettings(BaseModel):
+    enable_2fa: Optional[bool] = None
+    log_activities: Optional[bool] = None
+    admin_password: Optional[str] = Field(None, min_length=8)
+
+class SettingsUpdateRequest(BaseModel):
+    debate_config: Optional[DebateSettings] = None
+    api_limits: Optional[ApiLimits] = None
+    security: Optional[SecuritySettings] = None
+
+def _hash_admin_password(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+def _sanitize_settings_for_response(settings: Dict[str, Any]) -> Dict[str, Any]:
+    debate_config = settings.get("debate_config", DEFAULT_SYSTEM_SETTINGS["debate_config"])
+    api_limits = settings.get("api_limits", DEFAULT_SYSTEM_SETTINGS["api_limits"])
+    security = settings.get("security", {})
+    return {
+        "debate_config": debate_config,
+        "api_limits": api_limits,
+        "security": {
+            "admin_password_set": bool(security.get("admin_password_hash")),
+            "enable_2fa": security.get("enable_2fa", DEFAULT_SYSTEM_SETTINGS["security"]["enable_2fa"]),
+            "log_activities": security.get("log_activities", DEFAULT_SYSTEM_SETTINGS["security"]["log_activities"]),
+        },
+    }
+
+def _build_settings_update_payload(update: SettingsUpdateRequest) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {}
+    if update.debate_config:
+        payload["debate_config"] = update.debate_config.dict(exclude_none=True)
+    if update.api_limits:
+        payload["api_limits"] = update.api_limits.dict(exclude_none=True)
+    if update.security:
+        security_payload = update.security.dict(exclude_none=True)
+        password = security_payload.pop("admin_password", None)
+        if password is not None:
+            trimmed = password.strip()
+            security_payload["admin_password_hash"] = _hash_admin_password(trimmed) if trimmed else None
+        if security_payload:
+            payload["security"] = security_payload
+    return payload
+
+def _build_settings_response(settings: Dict[str, Any]) -> Dict[str, Any]:
+    response = {"settings": _sanitize_settings_for_response(settings)}
+    warning = db.get_settings_warning() if db else None
+    if warning:
+        response["warning"] = warning
+    return response
 
 # Rotas de Agentes
 @router.get("/agents")
@@ -672,6 +732,34 @@ async def get_dashboard_stats():
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro ao buscar estatísticas: {str(e)}")
+
+@router.get("/settings")
+async def get_settings():
+    """Retorna as configurações gerais do sistema"""
+    if not db:
+        raise HTTPException(status_code=500, detail="Database não configurado")
+    try:
+        settings = db.get_system_settings()
+        return _build_settings_response(settings)
+    except Exception as e:
+        print(f"[API_ADMIN] Erro ao buscar settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar configurações: {str(e)}")
+
+@router.put("/settings")
+async def update_settings(settings_update: SettingsUpdateRequest):
+    """Atualiza limites e configurações gerais"""
+    if not db:
+        raise HTTPException(status_code=500, detail="Database não configurado")
+    payload = _build_settings_update_payload(settings_update)
+    if not payload:
+        current = db.get_system_settings()
+        return _build_settings_response(current)
+    try:
+        updated = db.update_system_settings(payload)
+        return _build_settings_response(updated)
+    except Exception as e:
+        print(f"[API_ADMIN] Erro ao atualizar settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar configurações: {str(e)}")
 
 @router.get("/debug")
 async def debug_info():

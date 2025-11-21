@@ -2,14 +2,6 @@
 Servidor API Python para integração com a interface web Next.js
 Execute: python api_server.py
 """
-import sys
-import io
-
-# Configurar encoding UTF-8 para stdout/stderr (resolve problema com emojis no Windows)
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -85,6 +77,9 @@ class DebateRequest(BaseModel):
     agentes: List[str]
     pergunta: str
     num_rodadas: int
+    contexto: Optional[List[str]] = None
+    modo: Optional[str] = 'debate'
+    salvar: Optional[bool] = True
 
 @app.get("/api/agents")
 async def get_agents():
@@ -195,7 +190,7 @@ async def start_debate(request: DebateRequest):
         
         # Criar agentes CrewAI - suporta agentes dinâmicos do banco
         # Esta seção é executada após o try-except, independente de ter entrado no except ou não
-        from agents import criar_agente_dinamico, obter_agente, AGENTES_DISPONIVEIS
+        from agents import criar_agente_dinamico, obter_agente
         from rag_manager import RAGManager
         
         agentes_crewai = []
@@ -255,7 +250,13 @@ async def start_debate(request: DebateRequest):
         # Criar e executar debate com agentes já criados
         try:
             print(f"[DEBATE] Criando debate com {len(agentes_crewai)} agentes")
-            debate = DebateCrew(agentes_crewai=agentes_crewai, pergunta=request.pergunta, rag_managers=rag_managers)
+            debate = DebateCrew(
+                agentes_crewai=agentes_crewai,
+                pergunta=request.pergunta,
+                rag_managers=rag_managers,
+                contexto_usuario=request.contexto,
+                modo=request.modo or 'debate'
+            )
             print(f"[DEBATE] Executando debate com {request.num_rodadas} rodadas")
             historico = debate.executar_debate(num_rodadas=request.num_rodadas)
             print(f"[DEBATE] Debate executado. Total de itens no histórico: {len(historico)}")
@@ -296,22 +297,22 @@ async def start_debate(request: DebateRequest):
         
         # Salvar debate no banco de dados
         debate_id = None
-        try:
-            debate_id = db.save_debate(
-                pergunta=request.pergunta,
-                selected_agents=request.agentes,
-                num_rodadas=request.num_rodadas,
-                historico=historico,
-                sintese=sintese_final
-            )
-            print(f"[DEBATE] Debate salvo no banco com ID: {debate_id}")
-        except Exception as db_error:
-            print(f"[DEBATE] ERRO CRITICO ao salvar no banco: {str(db_error)}")
-            print(f"[DEBATE] Tipo do erro: {type(db_error).__name__}")
-            import traceback
-            traceback.print_exc()
-            # Ainda retorna a resposta, mas loga o erro claramente
-            debate_id = None
+        if request.salvar:
+            try:
+                debate_id = db.save_debate(
+                    pergunta=request.pergunta,
+                    selected_agents=request.agentes,
+                    num_rodadas=request.num_rodadas,
+                    historico=historico,
+                    sintese=sintese_final
+                )
+                print(f"[DEBATE] Debate salvo no banco com ID: {debate_id}")
+            except Exception as db_error:
+                print(f"[DEBATE] ERRO CRITICO ao salvar no banco: {str(db_error)}")
+                print(f"[DEBATE] Tipo do erro: {type(db_error).__name__}")
+                import traceback
+                traceback.print_exc()
+                debate_id = None
         
         return {
             "debate_id": debate_id,
@@ -462,4 +463,3 @@ async def move_debate_to_folder(request: MoveDebateRequest):
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
