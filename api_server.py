@@ -249,14 +249,15 @@ async def start_debate(request: DebateRequest):
         
         # Criar e executar debate com agentes já criados
         try:
-            print(f"[DEBATE] Criando debate com {len(agentes_crewai)} agentes")
-            debate = DebateCrew(
-                agentes_crewai=agentes_crewai,
-                pergunta=request.pergunta,
-                rag_managers=rag_managers,
-                contexto_usuario=request.contexto,
-                modo=request.modo or 'debate'
-            )
+        print(f"[DEBATE] Criando debate com {len(agentes_crewai)} agentes")
+        modo_escolhido = request.modo or 'debate'
+        debate = DebateCrew(
+            agentes_crewai=agentes_crewai,
+            pergunta=request.pergunta,
+            rag_managers=rag_managers,
+            contexto_usuario=request.contexto,
+            modo=modo_escolhido
+        )
             print(f"[DEBATE] Executando debate com {request.num_rodadas} rodadas")
             historico = debate.executar_debate(num_rodadas=request.num_rodadas)
             print(f"[DEBATE] Debate executado. Total de itens no histórico: {len(historico)}")
@@ -276,23 +277,25 @@ async def start_debate(request: DebateRequest):
         print(f"[DEBATE] Total de itens no historico: {len(historico)}")
         print(f"[DEBATE] Tipos de itens no historico: {[item.get('tipo') for item in historico]}")
         
+        summary_mode = modo_escolhido == 'sintese'
         for item in historico:
             print(f"[DEBATE] Processando item: tipo={item.get('tipo')}, agente={item.get('agente')}")
             if item["tipo"] == "sintese_conteudo":
-                sintese_final = item["conteudo"]
-                print(f"[DEBATE] Sintese encontrada: {len(sintese_final)} caracteres")
-                print(f"[DEBATE] Primeiros 200 caracteres: {sintese_final[:200]}...")
-            else:
-                historico_formatado.append({
-                    "tipo": item["tipo"],
-                    "conteudo": item["conteudo"],
-                    "agente": item.get("agente"),
-                    "rodada": item.get("rodada")
-                })
+                if summary_mode:
+                    sintese_final = item["conteudo"]
+                    print(f"[DEBATE] Sintese encontrada: {len(sintese_final)} caracteres")
+                    print(f"[DEBATE] Primeiros 200 caracteres: {sintese_final[:200]}...")
+                continue
+            historico_formatado.append({
+                "tipo": item["tipo"],
+                "conteudo": item["conteudo"],
+                "agente": item.get("agente"),
+                "rodada": item.get("rodada")
+            })
         
         print(f"[DEBATE] Historico formatado: {len(historico_formatado)} itens")
         print(f"[DEBATE] Sintese final: {'Sim' if sintese_final else 'Nao'}")
-        if sintese_final:
+        if sintese_final and summary_mode:
             print(f"[DEBATE] Tamanho da sintese: {len(sintese_final)} caracteres")
         
         # Salvar debate no banco de dados
