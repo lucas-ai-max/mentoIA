@@ -16,7 +16,8 @@ class DebateCrew:
         agentes_crewai: List[Agent] = None,
         rag_managers: Optional[Dict[int, Any]] = None,
         contexto_usuario: Optional[List[str]] = None,
-        modo: str = 'debate'
+        modo: str = 'debate',
+        agentes_nomes_map: Optional[Dict[int, str]] = None
     ):
         """
         Inicializa o debate
@@ -35,6 +36,7 @@ class DebateCrew:
         self.contexto_usuario = contexto_usuario or []
         self.modo = modo
         self.should_generate_summary = self.modo == 'sintese'
+        self.agentes_nomes_map = agentes_nomes_map or {}  # Dicionário: índice -> nome do agente
         
         if agentes_crewai:
             # Modo dinâmico: usar agentes já criados
@@ -150,10 +152,14 @@ class DebateCrew:
                     
                     resultado = crew.kickoff()
                     
+                    # Obter nome do agente se disponível no mapeamento, senão usar role
+                    agente_nome = self.agentes_nomes_map.get(idx, agente.role)
+                    
                     historico.append({
                         "tipo": "resposta",
                         "conteudo": str(resultado),
-                        "agente": agente.role
+                        "agente": agente_nome,  # Usar nome do agente em vez de apenas role
+                        "agente_role": agente.role  # Salvar role também para referência
                     })
                     
                     # Pequena pausa para tornar o debate mais natural

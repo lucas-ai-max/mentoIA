@@ -201,6 +201,17 @@ async def start_debate(request: DebateRequest):
         from agents import criar_agente_dinamico, obter_agente
         from rag_manager import RAGManager
         
+        # Criar mapeamento de índice -> nome do agente para salvar no histórico
+        # Isso deve ser feito ANTES de criar os agentes para garantir que temos os nomes corretos
+        agentes_nomes_map = {}  # índice -> nome do agente
+        for i, nome in enumerate(nomes_agentes):
+            # Se temos dados do banco, usar o nome do banco; senão usar o nome do fallback
+            if i < len(agentes_data):
+                agent_data = agentes_data[i]
+                agentes_nomes_map[i] = agent_data.get("name", nome)
+            else:
+                agentes_nomes_map[i] = nome
+        
         agentes_crewai = []
         rag_managers = {}  # Dicionário para mapear agent_id -> RAGManager
         agent_ids_map = {}  # Mapear índice do agente -> agent_id
@@ -259,13 +270,15 @@ async def start_debate(request: DebateRequest):
         try:
             print(f"[DEBATE] Criando debate com {len(agentes_crewai)} agentes CrewAI")
             print(f"[DEBATE] Agentes CrewAI criados: {[agente.role for agente in agentes_crewai]}")
+            print(f"[DEBATE] Mapeamento de nomes: {agentes_nomes_map}")
             modo_escolhido = request.modo or 'debate'
             debate = DebateCrew(
                 agentes_crewai=agentes_crewai,
                 pergunta=request.pergunta,
                 rag_managers=rag_managers,
                 contexto_usuario=request.contexto,
-                modo=modo_escolhido
+                modo=modo_escolhido,
+                agentes_nomes_map=agentes_nomes_map  # Passar mapeamento de nomes
             )
             print(f"[DEBATE] Executando debate com {request.num_rodadas} rodadas")
             historico = debate.executar_debate(num_rodadas=request.num_rodadas)
@@ -319,7 +332,8 @@ async def start_debate(request: DebateRequest):
             historico_formatado.append({
                 "tipo": item["tipo"],
                 "conteudo": item["conteudo"],
-                "agente": item.get("agente")
+                "agente": item.get("agente"),  # Nome do agente (prioridade)
+                "agente_role": item.get("agente_role")  # Role do agente (para referência)
             })
         
         print(f"[DEBATE] Historico formatado: {len(historico_formatado)} itens")
@@ -494,4 +508,11 @@ async def move_debate_to_folder(request: MoveDebateRequest):
         raise HTTPException(status_code=500, detail=f"Erro ao mover debate: {str(e)}")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=8000,
+        timeout_keep_alive=600,  # 10 minutos para manter conexão durante uploads grandes
+        limit_concurrency=100,
+        limit_max_requests=1000
+    )
