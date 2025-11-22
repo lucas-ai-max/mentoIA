@@ -182,11 +182,11 @@ class DebateCrew:
             print(f"✅ Síntese gerada: {len(sintese)} caracteres")
             
             # Adicionar apenas o conteúdo da síntese, sem título
-        historico.append({
-            "tipo": "sintese_conteudo",
-            "conteudo": sintese,
-            "agente": "Facilitador"
-        })
+            historico.append({
+                "tipo": "sintese_conteudo",
+                "conteudo": sintese,
+                "agente": "Facilitador"
+            })
         
         # Atualizar histórico final
         self.historico = historico
