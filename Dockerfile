@@ -29,6 +29,6 @@ COPY . .
 ENV PORT=8000
 EXPOSE 8000
 
-# Comando para iniciar o servidor
-CMD exec uvicorn api_server:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
+# Comando para iniciar o servidor (formato JSON array - resolve aviso JSONArgsRecommended)
+CMD ["python", "-c", "import os, uvicorn; uvicorn.run('api_server:app', host='0.0.0.0', port=int(os.getenv('PORT', 8000)), workers=1)"]
 
