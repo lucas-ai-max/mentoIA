@@ -319,9 +319,9 @@ async def start_debate(request: DebateRequest):
             # Ignorar síntese e sintese_conteudo - serão processadas separadamente
             if item["tipo"] in ["sintese", "sintese_conteudo"]:
                 if item["tipo"] == "sintese_conteudo" and summary_mode:
-                sintese_final = item["conteudo"]
-                print(f"[DEBATE] Sintese encontrada: {len(sintese_final)} caracteres")
-                print(f"[DEBATE] Primeiros 200 caracteres: {sintese_final[:200]}...")
+                    sintese_final = item["conteudo"]
+                    print(f"[DEBATE] Sintese encontrada: {len(sintese_final)} caracteres")
+                    print(f"[DEBATE] Primeiros 200 caracteres: {sintese_final[:200]}...")
                 continue
             
             # Para respostas, verificar se o agente está nos selecionados
@@ -354,21 +354,21 @@ async def start_debate(request: DebateRequest):
         # Salvar debate no banco de dados
         debate_id = None
         if request.salvar:
-        try:
-            debate_id = db.save_debate(
-                pergunta=request.pergunta,
-                selected_agents=request.agentes,
-                num_rodadas=request.num_rodadas,
-                historico=historico,
-                sintese=sintese_final
-            )
-            print(f"[DEBATE] Debate salvo no banco com ID: {debate_id}")
-        except Exception as db_error:
-            print(f"[DEBATE] ERRO CRITICO ao salvar no banco: {str(db_error)}")
-            print(f"[DEBATE] Tipo do erro: {type(db_error).__name__}")
-            import traceback
-            traceback.print_exc()
-            debate_id = None
+            try:
+                debate_id = db.save_debate(
+                    pergunta=request.pergunta,
+                    selected_agents=request.agentes,
+                    num_rodadas=request.num_rodadas,
+                    historico=historico,
+                    sintese=sintese_final
+                )
+                print(f"[DEBATE] Debate salvo no banco com ID: {debate_id}")
+            except Exception as db_error:
+                print(f"[DEBATE] ERRO CRITICO ao salvar no banco: {str(db_error)}")
+                print(f"[DEBATE] Tipo do erro: {type(db_error).__name__}")
+                import traceback
+                traceback.print_exc()
+                debate_id = None
         
         return {
             "debate_id": debate_id,
