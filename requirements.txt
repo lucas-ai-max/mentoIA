@@ -27,5 +27,5 @@ langchain-community==0.3.14
 langchain-openai==0.2.14
 langchain-anthropic==0.3.0
 langchain-google-genai==2.0.5
-langchain-text-splitters==0.3.14
+langchain-text-splitters==0.3.11
 langsmith==0.2.7
