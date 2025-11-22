@@ -19,12 +19,9 @@ python-docx==1.1.0
 openai==1.13.3
 anthropic==0.25.0
 
-# Langchain - SEM versões fixas (pip resolve automaticamente)
+# Langchain - Apenas pacotes principais (sub-pacotes são instalados automaticamente)
 langchain
-langchain-core
-langchain-community
 langchain-openai
 langchain-anthropic
 langchain-google-genai
-langchain-text-splitters
 google-generativeai
