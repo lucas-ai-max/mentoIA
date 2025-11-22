@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+.gitmodules
+
+# Documentação
+*.md
+README*
+
+# RAG stores (não precisa no container)
+rag_stores/
+
+# Node modules (se houver)
+node_modules/
+
+# Arquivos de ambiente (serão configurados no Cloud Run)
+.env
+.env.local
+
+# Logs
+*.log
+
+# Web frontend (não precisa no container do backend)
+web/
+

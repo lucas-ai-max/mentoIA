@@ -10,6 +10,7 @@ from agents import AGENTES_DISPONIVEIS
 from debate_crew import DebateCrew
 from database import Database
 import uvicorn
+import os
 
 # Importar router de admin com tratamento de erro
 admin_router = None
@@ -52,9 +53,18 @@ except Exception as e:
     traceback.print_exc()
 
 # CORS para permitir requisições do frontend
+# Obter origens permitidas das variáveis de ambiente
+ALLOWED_ORIGINS_STR = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000"
+)
+ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_STR.split(",")]
+
+print(f"[API_SERVER] CORS configurado para origens: {ALLOWED_ORIGINS}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
