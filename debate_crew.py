@@ -87,16 +87,8 @@ class DebateCrew:
             "agente": "Moderador"
         })
         
-        # Para cada rodada
-        for rodada in range(num_rodadas):
-            historico.append({
-                "tipo": "rodada",
-                "conteudo": f"--- RODADA {rodada + 1} ---",
-                "agente": "Sistema"
-            })
-            
-            # Cada agente responde
-            for idx, agente in enumerate(self.agentes):
+        # Cada agente responde uma vez
+        for idx, agente in enumerate(self.agentes):
                 try:
                     # Contexto: o que outros agentes já disseram
                     contexto_anterior = self._obter_contexto_anterior(historico)
@@ -161,8 +153,7 @@ class DebateCrew:
                     historico.append({
                         "tipo": "resposta",
                         "conteudo": str(resultado),
-                        "agente": agente.role,
-                        "rodada": rodada + 1
+                        "agente": agente.role
                     })
                     
                     # Pequena pausa para tornar o debate mais natural
@@ -175,27 +166,23 @@ class DebateCrew:
                         "agente": "Sistema"
                     })
         
-        # Atualizar histórico ANTES de gerar síntese
+        # Atualizar histórico ANTES de gerar síntese (se necessário)
         self.historico = historico
         
-        # Após todas as rodadas, gerar síntese final usando agente facilitador
-        historico.append({
-            "tipo": "sintese",
-            "conteudo": "--- SÍNTESE FINAL DO DEBATE ---",
-            "agente": "Moderador"
-        })
+        # Só gerar síntese se should_generate_summary for True (modo 'sintese')
+        if self.should_generate_summary:
+            print("🔄 Gerando síntese final do debate com agente facilitador...")
+            sintese = self.gerar_sintese_com_agente()
+            print(f"✅ Síntese gerada: {len(sintese)} caracteres")
+            
+            # Adicionar apenas o conteúdo da síntese, sem título
+            historico.append({
+                "tipo": "sintese_conteudo",
+                "conteudo": sintese,
+                "agente": "Facilitador"
+            })
         
-        print("🔄 Gerando síntese final do debate com agente facilitador...")
-        sintese = self.gerar_sintese_com_agente()
-        print(f"✅ Síntese gerada: {len(sintese)} caracteres")
-        
-        historico.append({
-            "tipo": "sintese_conteudo",
-            "conteudo": sintese,
-            "agente": "Facilitador"
-        })
-        
-        # Atualizar novamente com a síntese incluída
+        # Atualizar histórico final
         self.historico = historico
         return historico
     
@@ -309,8 +296,6 @@ class DebateCrew:
                 continue
             if item["tipo"] == "pergunta":
                 formato.append(f"**🤔 PERGUNTA:** {item['conteudo']}\n")
-            elif item["tipo"] == "rodada":
-                formato.append(f"\n{item['conteudo']}\n")
             elif item["tipo"] == "resposta":
                 formato.append(f"**{item['agente']}:**\n{item['conteudo']}\n")
             elif item["tipo"] == "erro":

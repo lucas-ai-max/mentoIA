@@ -187,7 +187,6 @@ class Database:
                     "agent_id": item.get("agente"),
                     "agent_name": item.get("agente"),
                     "agent_role": item.get("agente"),
-                    "round_number": item.get("rodada"),
                     "order_index": idx,
                     # Não enviar timestamp - deixar o banco usar DEFAULT
                 }

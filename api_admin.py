@@ -9,6 +9,7 @@ from datetime import datetime
 import hashlib
 import uuid
 import os
+import re
 
 print("[API_ADMIN] Carregando modulo api_admin...")
 
@@ -23,6 +24,33 @@ except Exception as e:
     import traceback
     traceback.print_exc()
     db = None
+
+def sanitize_text_for_postgres(text: str) -> str:
+    """
+    Remove caracteres problemáticos que o PostgreSQL não aceita
+    Especialmente caracteres nulos (\u0000) e outros caracteres de controle inválidos
+    """
+    if not text:
+        return text
+    
+    # Remover caracteres nulos (\u0000 ou \x00)
+    text = text.replace('\x00', '')
+    text = text.replace('\u0000', '')
+    
+    # Remover outros caracteres de controle problemáticos
+    # Manter: \n (0x0A - line feed), \r (0x0D - carriage return), \t (0x09 - tab)
+    # Remover: outros caracteres de controle (0x00-0x08, 0x0B-0x0C, 0x0E-0x1F)
+    text = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F]', '', text)
+    
+    # Garantir que o texto seja válido UTF-8
+    try:
+        # Tentar codificar/decodificar para garantir validade
+        text.encode('utf-8')
+    except UnicodeEncodeError:
+        # Se houver problemas, usar errors='replace' para substituir caracteres inválidos
+        text = text.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+    
+    return text
 
 # Models
 class AgentCreate(BaseModel):
@@ -680,20 +708,23 @@ async def get_dashboard_stats():
         debates_this_week_result = db.supabase.table("debates").select("id").gte("created_at", first_day_week.isoformat()).execute()
         debates_this_week = len(debates_this_week_result.data) if debates_this_week_result.data else 0
         
-        # LLMs configurados (providers únicos)
-        llms_result = db.supabase.table("agents").select("llm_provider, llm_model").eq("status", "active").execute()
+        # LLMs configurados (providers conectados na tabela llm_providers)
+        llms_providers_result = db.supabase.table("llm_providers").select("provider, config, status").eq("status", "connected").execute()
         unique_providers = set()
         provider_models = {}
-        if llms_result.data:
-            for agent in llms_result.data:
-                provider = agent.get("llm_provider")
+        
+        if llms_providers_result.data:
+            for provider_data in llms_providers_result.data:
+                provider = provider_data.get("provider")
                 if provider:
                     unique_providers.add(provider)
-                    model = agent.get("llm_model", "")
-                    if provider not in provider_models:
-                        provider_models[provider] = set()
-                    if model:
-                        provider_models[provider].add(model)
+                    config = provider_data.get("config", {}) or {}
+                    enabled_models = config.get("enabled_models", [])
+                    if enabled_models:
+                        if provider not in provider_models:
+                            provider_models[provider] = set()
+                        for model in enabled_models:
+                            provider_models[provider].add(model)
         
         # Formatar lista de LLMs
         llms_list = []
@@ -716,6 +747,47 @@ async def get_dashboard_stats():
         estimated_monthly_limit = 1000  # Limite simulado
         api_usage_percent = min(100, int((debates_this_month / estimated_monthly_limit) * 100)) if estimated_monthly_limit > 0 else 0
         
+        # Atividades recentes (últimas 3 de cada tipo)
+        recent_activities = []
+        
+        # Agentes criados recentemente
+        recent_agents = db.supabase.table("agents").select("name, created_at").order("created_at", desc=True).limit(3).execute()
+        if recent_agents.data:
+            for agent in recent_agents.data:
+                recent_activities.append({
+                    "type": "agent",
+                    "message": f"Novo agente criado: {agent.get('name', 'Agente')}",
+                    "created_at": agent.get("created_at")
+                })
+        
+        # Debates iniciados recentemente
+        recent_debates = db.supabase.table("debates").select("pergunta, created_at").order("created_at", desc=True).limit(3).execute()
+        if recent_debates.data:
+            for debate in recent_debates.data:
+                debate_pergunta = debate.get('pergunta', 'Debate')
+                if len(debate_pergunta) > 30:
+                    debate_pergunta = debate_pergunta[:30] + "..."
+                recent_activities.append({
+                    "type": "debate",
+                    "message": f"Debate iniciado: {debate_pergunta}",
+                    "created_at": debate.get("created_at")
+                })
+        
+        # LLMs configurados recentemente (usar updated_at ou created_at)
+        recent_llms = db.supabase.table("llm_providers").select("provider, updated_at, created_at, status").eq("status", "connected").order("updated_at", desc=True).limit(3).execute()
+        if recent_llms.data:
+            for llm in recent_llms.data:
+                provider = llm.get("provider", "").upper()
+                recent_activities.append({
+                    "type": "llm",
+                    "message": f"LLM configurado: {provider}",
+                    "created_at": llm.get("updated_at") or llm.get("created_at")
+                })
+        
+        # Ordenar todas as atividades por data (mais recente primeiro) e pegar as 3 mais recentes
+        recent_activities.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        recent_activities = recent_activities[:3]
+        
         print(f"[API_ADMIN] Estatísticas: agents={total_agents}, debates={total_debates}, llms={len(unique_providers)}")
         
         return {
@@ -725,7 +797,8 @@ async def get_dashboard_stats():
             "debates_this_week": debates_this_week,
             "llms_count": len(unique_providers),
             "llms_list": llms_list if llms_list else ["Nenhum configurado"],
-            "api_usage_percent": api_usage_percent
+            "api_usage_percent": api_usage_percent,
+            "recent_activities": recent_activities
         }
     except Exception as e:
         print(f"[API_ADMIN] Erro ao buscar estatísticas: {str(e)}")
@@ -854,15 +927,22 @@ async def upload_agent_knowledge_file(
         # Ler conteúdo do arquivo
         file_content = await file.read()
         
-        # Validar tamanho do arquivo (máximo 10MB)
-        if len(file_content) > 10 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="Arquivo muito grande. Tamanho máximo: 10MB")
+        # Validar tamanho do arquivo (máximo 100MB)
+        if len(file_content) > 100 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Arquivo muito grande. Tamanho máximo: 100MB")
         
         # Extrair texto do arquivo
         try:
             extracted_text = extract_text_from_file(file_content, file.filename)
             if not extracted_text.strip():
                 raise HTTPException(status_code=400, detail="Nao foi possivel extrair texto do arquivo. Verifique se o arquivo nao esta vazio ou protegido.")
+            
+            # Sanitizar o texto para remover caracteres problemáticos (como \u0000)
+            # que o PostgreSQL não aceita
+            extracted_text = sanitize_text_for_postgres(extracted_text)
+            
+            if not extracted_text.strip():
+                raise HTTPException(status_code=400, detail="O texto extraído do arquivo está vazio após sanitização. O arquivo pode conter apenas caracteres inválidos.")
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:

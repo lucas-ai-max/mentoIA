@@ -115,12 +115,14 @@ async def get_agents():
 async def start_debate(request: DebateRequest):
     """Inicia um novo debate"""
     try:
-        print(f"[DEBATE] Iniciando debate - Agentes: {request.agentes}, Pergunta: {request.pergunta[:50]}..., Rodadas: {request.num_rodadas}")
+        print(f"[DEBATE] Iniciando debate - Agentes recebidos do frontend: {request.agentes}")
+        print(f"[DEBATE] Total de agentes recebidos: {len(request.agentes)}")
+        print(f"[DEBATE] Pergunta: {request.pergunta[:50]}..., Rodadas: {request.num_rodadas}")
         # Validar agentes
-        if len(request.agentes) < 2:
+        if len(request.agentes) < 1:
             raise HTTPException(
                 status_code=400,
-                detail="Selecione pelo menos 2 agentes"
+                detail="Selecione pelo menos 1 agente"
             )
         
         # Buscar agentes do banco de dados usando os IDs (UUIDs)
@@ -130,13 +132,16 @@ async def start_debate(request: DebateRequest):
         
         try:
             # Buscar todos os agentes selecionados do banco
-            for agente_id in request.agentes:
+            print(f"[DEBATE] Buscando {len(request.agentes)} agentes no banco de dados...")
+            for idx, agente_id in enumerate(request.agentes):
+                print(f"[DEBATE] Buscando agente {idx+1}/{len(request.agentes)}: ID={agente_id}")
                 result = db.supabase.table("agents").select("*").eq("id", agente_id).eq("status", "active").execute()
                 if result.data and len(result.data) > 0:
                     agent_data = result.data[0]
                     agentes_data.append(agent_data)
                     # Usar o nome do agente do banco
                     nomes_agentes.append(agent_data["name"])
+                    print(f"[DEBATE] ✓ Agente encontrado: {agent_data['name']}")
                 else:
                     # Fallback: tentar mapear IDs antigos (compatibilidade)
                     nome_map = {
@@ -156,10 +161,13 @@ async def start_debate(request: DebateRequest):
                             detail=f"Agente com ID '{agente_id}' não encontrado no banco de dados"
                         )
             
-            if len(nomes_agentes) < 2:
+            print(f"[DEBATE] Total de agentes encontrados no banco: {len(nomes_agentes)}")
+            print(f"[DEBATE] Nomes dos agentes: {nomes_agentes}")
+            
+            if len(nomes_agentes) < 1:
                 raise HTTPException(
                     status_code=400,
-                    detail="Selecione pelo menos 2 agentes válidos"
+                    detail="Selecione pelo menos 1 agente válido"
                 )
         except HTTPException:
             raise
@@ -182,10 +190,10 @@ async def start_debate(request: DebateRequest):
                     nomes_agentes.append(nome)
                     usar_fallback = True
             
-            if len(nomes_agentes) < 2:
+            if len(nomes_agentes) < 1:
                 raise HTTPException(
                     status_code=400,
-                    detail="Agentes inválidos"
+                    detail="Selecione pelo menos 1 agente válido"
                 )
         
         # Criar agentes CrewAI - suporta agentes dinâmicos do banco
@@ -249,15 +257,16 @@ async def start_debate(request: DebateRequest):
         
         # Criar e executar debate com agentes já criados
         try:
-        print(f"[DEBATE] Criando debate com {len(agentes_crewai)} agentes")
-        modo_escolhido = request.modo or 'debate'
-        debate = DebateCrew(
-            agentes_crewai=agentes_crewai,
-            pergunta=request.pergunta,
-            rag_managers=rag_managers,
-            contexto_usuario=request.contexto,
-            modo=modo_escolhido
-        )
+            print(f"[DEBATE] Criando debate com {len(agentes_crewai)} agentes CrewAI")
+            print(f"[DEBATE] Agentes CrewAI criados: {[agente.role for agente in agentes_crewai]}")
+            modo_escolhido = request.modo or 'debate'
+            debate = DebateCrew(
+                agentes_crewai=agentes_crewai,
+                pergunta=request.pergunta,
+                rag_managers=rag_managers,
+                contexto_usuario=request.contexto,
+                modo=modo_escolhido
+            )
             print(f"[DEBATE] Executando debate com {request.num_rodadas} rodadas")
             historico = debate.executar_debate(num_rodadas=request.num_rodadas)
             print(f"[DEBATE] Debate executado. Total de itens no histórico: {len(historico)}")
@@ -278,19 +287,39 @@ async def start_debate(request: DebateRequest):
         print(f"[DEBATE] Tipos de itens no historico: {[item.get('tipo') for item in historico]}")
         
         summary_mode = modo_escolhido == 'sintese'
+        # Obter apenas os agentes selecionados para filtrar o histórico
+        agentes_selecionados_set = set(nomes_agentes)
+        
         for item in historico:
             print(f"[DEBATE] Processando item: tipo={item.get('tipo')}, agente={item.get('agente')}")
-            if item["tipo"] == "sintese_conteudo":
-                if summary_mode:
+            
+            # Ignorar síntese e sintese_conteudo - serão processadas separadamente
+            if item["tipo"] in ["sintese", "sintese_conteudo"]:
+                if item["tipo"] == "sintese_conteudo" and summary_mode:
                     sintese_final = item["conteudo"]
                     print(f"[DEBATE] Sintese encontrada: {len(sintese_final)} caracteres")
                     print(f"[DEBATE] Primeiros 200 caracteres: {sintese_final[:200]}...")
                 continue
+            
+            # Para respostas, verificar se o agente está nos selecionados
+            if item["tipo"] == "resposta":
+                agente_nome = item.get("agente", "")
+                # Verificar se o nome do agente corresponde a algum dos selecionados
+                # O agente pode vir como role (ex: "CEO da Apple") ou nome (ex: "Tim Cook")
+                agente_encontrado = False
+                for nome_selecionado in agentes_selecionados_set:
+                    if nome_selecionado in agente_nome or agente_nome in nome_selecionado:
+                        agente_encontrado = True
+                        break
+                
+                if not agente_encontrado and agente_nome not in ["Moderador", "Sistema", "Contexto"]:
+                    print(f"[DEBATE] Ignorando resposta de agente não selecionado: {agente_nome}")
+                    continue
+            
             historico_formatado.append({
                 "tipo": item["tipo"],
                 "conteudo": item["conteudo"],
-                "agente": item.get("agente"),
-                "rodada": item.get("rodada")
+                "agente": item.get("agente")
             })
         
         print(f"[DEBATE] Historico formatado: {len(historico_formatado)} itens")
