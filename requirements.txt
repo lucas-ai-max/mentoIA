@@ -25,3 +25,6 @@ langchain-openai
 langchain-anthropic
 langchain-google-genai
 google-generativeai
+
+# Fix para Python 3.11 - wrapt compatibilidade
+wrapt>=1.14.0
