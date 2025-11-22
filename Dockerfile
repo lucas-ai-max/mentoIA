@@ -10,11 +10,15 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
+# Atualizar pip para versão mais recente (resolve dependências melhor)
+RUN pip install --upgrade pip setuptools wheel
+
 # Copiar requirements.txt
 COPY requirements.txt .
 
-# Instalar dependências Python
-RUN pip install --no-cache-dir -r requirements.txt
+# Instalar dependências Python com resolver mais rápido
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copiar código da aplicação
 COPY . .
