@@ -2,7 +2,7 @@
 
 Interface web moderna criada com Next.js 14+ para substituir a interface Streamlit, mantendo toda a funcionalidade do backend Python com CrewAI.
 
-## 📋 Pré-requisitos
+## 📋 Pre-requisitos
 
 - Node.js 20.9.0 ou superior
 - Python 3.11+
