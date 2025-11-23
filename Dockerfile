@@ -10,17 +10,17 @@ RUN apt-get update && apt-get install -y \
     g++ \
     libpq-dev \
     postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Atualizar pip para versão mais recente (resolve dependências melhor)
-RUN pip install --upgrade pip setuptools wheel
+# Instalar uv (ferramenta rápida de gerenciamento de pacotes Python em Rust)
+RUN pip install uv
 
 # Copiar requirements.txt
 COPY requirements.txt .
 
-# Instalar dependências Python com resolver mais rápido
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Instalar dependências usando uv (muito mais rápido que pip, resolve em segundos)
+RUN uv pip install --system --no-cache -r requirements.txt
 
 # Copiar código da aplicação
 COPY . .
@@ -31,4 +31,3 @@ EXPOSE 8000
 
 # Comando para iniciar o servidor (formato JSON array - resolve aviso JSONArgsRecommended)
 CMD ["python", "-c", "import os, uvicorn; uvicorn.run('api_server:app', host='0.0.0.0', port=int(os.getenv('PORT', 8000)), workers=1)"]
-
