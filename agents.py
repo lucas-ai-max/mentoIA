@@ -11,19 +11,28 @@ from dotenv import load_dotenv
 env_path = Path(__file__).parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-# Configuração do LLM
+# Configuração do LLM (opcional - não crashar na inicialização)
+# As API keys podem ser configuradas pelo admin panel
 api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("OPENAI_API_KEY não encontrada no arquivo .env")
-
-llm = ChatOpenAI(
-    model="gpt-4",
-    temperature=0.7,
-    api_key=api_key
-)
+if api_key:
+    llm = ChatOpenAI(
+        model="gpt-4",
+        temperature=0.7,
+        api_key=api_key
+    )
+else:
+    # LLM será criado dinamicamente quando necessário
+    llm = None
 
 def criar_elon_musk():
     """Cria agente representando Elon Musk"""
+    # Criar LLM se não existir (para compatibilidade)
+    agent_llm = llm
+    if agent_llm is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key:
+            agent_llm = ChatOpenAI(model="gpt-4", temperature=0.7, api_key=api_key)
+    
     return Agent(
         role="CEO da Tesla e SpaceX",
         goal="Promover inovação disruptiva, sustentabilidade e exploração espacial. Defender visões audaciosas e transformadoras.",
@@ -33,7 +42,7 @@ def criar_elon_musk():
         Você gosta de desafiar o status quo e pensar em soluções que outros consideram impossíveis.""",
         verbose=True,
         allow_delegation=False,
-        llm=llm
+        llm=agent_llm
     )
 
 def criar_bill_gates():
