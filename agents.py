@@ -14,6 +14,9 @@ load_dotenv(dotenv_path=env_path)
 # Configuração do LLM (opcional - não crashar na inicialização)
 # As API keys podem ser configuradas pelo admin panel
 api_key = os.getenv("OPENAI_API_KEY")
+# Ignorar valores placeholder (comum em ambientes de deploy)
+if api_key and api_key.lower().strip() in ["placeholder", "none", "", "null"]:
+    api_key = None
 if api_key:
     llm = ChatOpenAI(
         model="gpt-4",
@@ -30,6 +33,9 @@ def criar_elon_musk():
     agent_llm = llm
     if agent_llm is None:
         api_key = os.getenv("OPENAI_API_KEY")
+        # Ignorar valores placeholder
+        if api_key and api_key.lower().strip() in ["placeholder", "none", "", "null"]:
+            api_key = None
         if api_key:
             agent_llm = ChatOpenAI(model="gpt-4", temperature=0.7, api_key=api_key)
     
@@ -171,6 +177,13 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
             api_key = os.getenv("ANTHROPIC_API_KEY")
         elif llm_provider == "google":
             api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+        
+        # Ignorar valores "placeholder", "none" ou vazios - tratá-los como se não existissem
+        # Isso permite que o código busque no banco de dados mesmo quando variáveis de ambiente
+        # estão definidas com valores placeholder (comum em ambientes de deploy)
+        if api_key and api_key.lower().strip() in ["placeholder", "none", "", "null"]:
+            api_key = None
+            print(f"[AGENTS] Ignorando valor placeholder para {llm_provider}, buscando no banco de dados")
         
         if api_key:
             print(f"[AGENTS] Usando API key do arquivo .env para {llm_provider}")
