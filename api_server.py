@@ -70,40 +70,41 @@ print("[API_SERVER] FastAPI app criado com sucesso", flush=True)
 print(f"[API_SERVER] admin_router apos importacao: {admin_router}", flush=True)
 print(f"[API_SERVER] Tipo de admin_router: {type(admin_router)}", flush=True)
 
-# Inicializar banco de dados
+# Inicializar banco de dados - será feito no startup event para não bloquear o servidor
 # IMPORTANTE: Usar a mesma instância do Database que está em api_admin.py
 # para garantir consistência
-# Tornar inicialização resiliente - não travar se houver problemas
 db = None
-try:
-    db = Database()
-    print(f"[API_SERVER] Database inicializado: {db}")
-except Exception as e:
-    print(f"[API_SERVER] ERRO ao inicializar Database: {str(e)}")
-    import traceback
-    traceback.print_exc()
-    # Continuar mesmo sem banco (para permitir que o servidor inicie)
-    print("[API_SERVER] AVISO: Continuando sem Database. Algumas funcionalidades podem não funcionar.")
 
-# Testar conexão na inicialização (não bloquear se falhar)
-if db:
+# Evento de startup - inicializar Database após o servidor iniciar
+@app.on_event("startup")
+async def startup_event():
+    """Inicializa o Database após o servidor iniciar"""
+    global db
+    print("[API_SERVER] Startup event: Inicializando Database...", flush=True)
     try:
-        print("[API_SERVER] Testando conexão com banco...")
-        if db.test_connection():
-            print("[API_SERVER] Conexao com Supabase OK")
-            if db.check_tables_exist():
-                print("[API_SERVER] Tabelas verificadas")
+        db = Database()
+        print(f"[API_SERVER] Database inicializado: {db}", flush=True)
+        
+        # Testar conexão (não bloquear se falhar)
+        try:
+            print("[API_SERVER] Testando conexão com banco...", flush=True)
+            if db.test_connection():
+                print("[API_SERVER] Conexao com Supabase OK", flush=True)
+                if db.check_tables_exist():
+                    print("[API_SERVER] Tabelas verificadas", flush=True)
+                else:
+                    print("[API_SERVER] AVISO: Tabelas podem nao existir. Execute supabase_schema.sql no Supabase", flush=True)
             else:
-                print("[API_SERVER] AVISO: Tabelas podem nao existir. Execute supabase_schema.sql no Supabase")
-        else:
-            print("[API_SERVER] Aviso: Problemas na conexao com o banco de dados")
+                print("[API_SERVER] Aviso: Problemas na conexao com o banco de dados", flush=True)
+        except Exception as e:
+            print(f"[API_SERVER] Erro ao testar conexao: {str(e)}", flush=True)
+            import traceback
+            traceback.print_exc()
     except Exception as e:
-        print(f"[API_SERVER] Erro ao testar conexao: {str(e)}")
+        print(f"[API_SERVER] ERRO ao inicializar Database: {str(e)}", flush=True)
         import traceback
         traceback.print_exc()
-        # Continuar mesmo se o teste falhar
-else:
-    print("[API_SERVER] AVISO: Database não inicializado. Algumas funcionalidades podem não funcionar.")
+        print("[API_SERVER] AVISO: Continuando sem Database. Algumas funcionalidades podem não funcionar.", flush=True)
 
 # CORS para permitir requisições do frontend
 # Obter origens permitidas das variáveis de ambiente
@@ -498,13 +499,18 @@ async def delete_debate(debate_id: str):
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    """Root endpoint - usado pelo Cloud Run startup probe"""
     return {"status": "ok", "message": "BillIA API is running"}
 
 @app.get("/api/health")
 async def health():
     """Health check"""
     return {"status": "ok", "service": "mentoia-api"}
+
+@app.get("/health")
+async def health_simple():
+    """Simple health check for Cloud Run"""
+    return {"status": "ok"}
 
 # ========== ENDPOINTS PARA PASTAS ==========
 
