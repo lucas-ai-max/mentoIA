@@ -25,9 +25,9 @@ RUN uv pip install --system --no-cache -r requirements.txt
 # Copiar código da aplicação
 COPY . .
 
-# Expor porta (Cloud Run usa a variável PORT)
-ENV PORT=8000
-EXPOSE 8000
+# Expor porta (Cloud Run define PORT automaticamente, padrão é 8080)
+EXPOSE 8080
 
-# Comando para iniciar o servidor (formato JSON array - resolve aviso JSONArgsRecommended)
-CMD ["python", "-c", "import os, uvicorn; uvicorn.run('api_server:app', host='0.0.0.0', port=int(os.getenv('PORT', 8000)), workers=1)"]
+# Comando para iniciar o servidor (Cloud Run define PORT=8080)
+# Usa 8080 como padrão (padrão do Cloud Run) se PORT não estiver definido
+CMD ["python", "-c", "import os, uvicorn; port = int(os.getenv('PORT', 8080)); print(f'Starting server on port {port}'); uvicorn.run('api_server:app', host='0.0.0.0', port=port, workers=1)"]
