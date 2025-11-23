@@ -31,4 +31,4 @@ ENV OTEL_SDK_DISABLED=true
 EXPOSE 8080
 
 # Comando usando python -m para garantir o PATH correto
-CMD ["sh", "-c", "python -m uvicorn api_server:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --log-level debug"]
+CMD ["sh", "-c", "python -m uvicorn api_server:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --log-level info"]
