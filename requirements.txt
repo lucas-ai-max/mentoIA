@@ -22,6 +22,12 @@ anthropic
 langchain-google-genai
 google-generativeai
 
+# --- LangChain Core (Necessário para funcionar) ---
+langchain
+langchain-core
+langchain-community
+langchain-text-splitters
+
 # --- Correções de Dependências (Para evitar o erro do Protobuf) ---
 protobuf>=5.0
 opentelemetry-api>=1.30.0
