@@ -17,15 +17,15 @@ api_key = os.getenv("OPENAI_API_KEY")
 # Ignorar valores placeholder (comum em ambientes de deploy)
 if api_key and api_key.lower().strip() in ["placeholder", "none", "", "null"]:
     api_key = None
-if api_key:
+    llm = None  # Será criado dinamicamente quando necessário
+elif api_key:
     llm = ChatOpenAI(
         model="gpt-4",
         temperature=0.7,
         api_key=api_key
     )
 else:
-    # LLM será criado dinamicamente quando necessário
-    llm = None
+    llm = None  # Será criado dinamicamente quando necessário
 
 def criar_elon_musk():
     """Cria agente representando Elon Musk"""
@@ -197,7 +197,6 @@ def validar_api_key(api_key, provider: str, agent_name: str) -> str:
 
 def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None) -> Agent:
     """Cria um agente dinamicamente a partir de dados do banco"""
-    from langchain_openai import ChatOpenAI
     from langchain_anthropic import ChatAnthropic
     from rag_manager import RAGManager
     import os
@@ -256,6 +255,18 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
     except ValueError as e:
         print(f"[AGENTS] ERRO: {str(e)}")
         raise
+    
+    # CRÍTICO: Setar env var com chave validada ANTES de criar LLM
+    # Isso garante que SDK use a chave do banco, não o "placeholder"
+    # Mapear provider para nome correto da env var
+    env_var_name = {
+        "openai": "OPENAI_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+        "google": "GOOGLE_API_KEY"
+    }.get(llm_provider, f"{llm_provider.upper()}_API_KEY")
+    
+    os.environ[env_var_name] = api_key
+    print(f"[AGENTS] Env var atualizada: {env_var_name}")
     
     # Obter max_tokens do agent_data (padrão: 1000)
     max_tokens = int(agent_data.get("max_tokens", 1000))
