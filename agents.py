@@ -181,9 +181,12 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
             result = database.supabase.table("llm_providers").select("*").eq("provider", llm_provider).execute()
             if result.data and len(result.data) > 0:
                 provider_data = result.data[0]
-                if provider_data.get("status") == "connected" and provider_data.get("api_key_encrypted"):
+                # Buscar API key se existir, independente do status
+                # O status "connected" só indica que foi testada, mas a chave pode existir mesmo sem teste
+                if provider_data.get("api_key_encrypted"):
                     api_key = provider_data.get("api_key_encrypted")
-                    print(f"[AGENTS] Usando API key do banco de dados para {llm_provider}")
+                    status = provider_data.get("status", "disconnected")
+                    print(f"[AGENTS] Usando API key do banco de dados para {llm_provider} (status: {status})")
         except Exception as e:
             print(f"[AGENTS] Erro ao buscar API key do banco: {str(e)}")
     
