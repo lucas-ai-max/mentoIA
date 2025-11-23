@@ -23,6 +23,10 @@ RUN uv pip install --system --no-cache -r requirements.txt
 # Copiar código
 COPY . .
 
+# Desativar telemetria do CrewAI para evitar travamento no startup
+ENV CREWAI_TELEMETRY_OPT_OUT=true
+ENV OTEL_SDK_DISABLED=true
+
 # Expor porta
 EXPOSE 8080
 

@@ -62,4 +62,6 @@ jobs:
             --set-env-vars "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             --set-env-vars "OPENAI_API_KEY=placeholder" \
             --set-env-vars "ANTHROPIC_API_KEY=placeholder" \
-            --set-env-vars "GOOGLE_API_KEY=placeholder"
+            --set-env-vars "GOOGLE_API_KEY=placeholder" \
+            --set-env-vars "CREWAI_TELEMETRY_OPT_OUT=true" \
+            --set-env-vars "OTEL_SDK_DISABLED=true"
