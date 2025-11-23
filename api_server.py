@@ -39,12 +39,19 @@ except Exception as e:
     AGENTES_DISPONIVEIS = {}
 
 try:
+    print("[API_SERVER] Tentando importar debate_crew...", flush=True)
     from debate_crew import DebateCrew
-    print("[API_SERVER] DebateCrew importado com sucesso", flush=True)
+    print(f"[API_SERVER] DebateCrew importado com sucesso: {DebateCrew}", flush=True)
+    print(f"[API_SERVER] Tipo de DebateCrew: {type(DebateCrew)}", flush=True)
 except Exception as e:
-    print(f"[API_SERVER] ERRO ao importar debate_crew: {str(e)}", flush=True)
+    print(f"[API_SERVER] =====================================", flush=True)
+    print(f"[API_SERVER] ERRO CRÍTICO ao importar debate_crew!", flush=True)
+    print(f"[API_SERVER] Tipo do erro: {type(e).__name__}", flush=True)
+    print(f"[API_SERVER] Mensagem: {str(e)}", flush=True)
+    print(f"[API_SERVER] =====================================", flush=True)
     import traceback
     traceback.print_exc()
+    print(f"[API_SERVER] DebateCrew será None - debates não funcionarão", flush=True)
     DebateCrew = None
 
 try:
@@ -351,6 +358,19 @@ async def start_debate(request: DebateRequest):
         
         # Criar e executar debate com agentes já criados
         try:
+            # VERIFICAÇÃO CRÍTICA
+            if DebateCrew is None:
+                error_msg = (
+                    "DebateCrew não está disponível. "
+                    "O import falhou durante a inicialização do servidor. "
+                    "Verifique os logs de startup para detalhes."
+                )
+                print(f"[DEBATE] ERRO: {error_msg}")
+                raise HTTPException(
+                    status_code=503,
+                    detail=error_msg
+                )
+            
             print(f"[DEBATE] Criando debate com {len(agentes_crewai)} agentes CrewAI")
             print(f"[DEBATE] Agentes CrewAI criados: {[agente.role for agente in agentes_crewai]}")
             print(f"[DEBATE] Mapeamento de nomes: {agentes_nomes_map}")
