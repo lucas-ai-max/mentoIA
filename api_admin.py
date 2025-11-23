@@ -13,17 +13,57 @@ import re
 
 print("[API_ADMIN] Carregando modulo api_admin...")
 
+# ⚠️ CRÍTICO: Router sempre deve ser criado, mesmo se Database falhar
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 print(f"[API_ADMIN] Router criado com prefix: {router.prefix}")
 
-try:
-    db = Database()
-    print("[API_ADMIN] Database inicializado em api_admin")
-except Exception as e:
-    print(f"[API_ADMIN] ERRO ao inicializar Database em api_admin: {str(e)}")
-    import traceback
-    traceback.print_exc()
-    db = None
+# Database será inicializado lazy (só quando necessário)
+# Isso garante que o router sempre seja exportado, mesmo se houver erros de conexão
+_db_instance = None
+_db_error = None
+
+def get_db():
+    """
+    Lazy initialization do Database.
+    Retorna a instância do Database ou levanta HTTPException se não disponível.
+    """
+    global _db_instance, _db_error
+    
+    if _db_instance is not None:
+        return _db_instance
+    
+    if _db_error is not None:
+        # Se já tentamos e falhou, retornar erro
+        raise HTTPException(
+            status_code=503,
+            detail=f"Database não disponível: {str(_db_error)}"
+        )
+    
+    # Tentar inicializar pela primeira vez
+    try:
+        _db_instance = Database()
+        print("[API_ADMIN] Database inicializado (lazy)")
+        return _db_instance
+    except Exception as e:
+        _db_error = e
+        print(f"[API_ADMIN] ERRO ao inicializar Database (lazy): {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=503,
+            detail=f"Database não disponível: {str(e)}"
+        )
+
+# Classe wrapper para manter compatibilidade com código existente
+class DatabaseWrapper:
+    """Wrapper que permite usar db.supabase como antes, mas com lazy initialization"""
+    def __getattr__(self, name):
+        if name == 'supabase':
+            return get_db().supabase
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
+# Criar instância do wrapper para compatibilidade
+db = DatabaseWrapper()
 
 def sanitize_text_for_postgres(text: str) -> str:
     """
@@ -154,9 +194,14 @@ def _build_settings_update_payload(update: SettingsUpdateRequest) -> Dict[str, A
 
 def _build_settings_response(settings: Dict[str, Any]) -> Dict[str, Any]:
     response = {"settings": _sanitize_settings_for_response(settings)}
-    warning = db.get_settings_warning() if db else None
-    if warning:
-        response["warning"] = warning
+    try:
+        db_instance = get_db()
+        warning = db_instance.get_settings_warning() if db_instance else None
+        if warning:
+            response["warning"] = warning
+    except HTTPException:
+        # Se database não disponível, continuar sem warning
+        pass
     return response
 
 # Rotas de Agentes
@@ -170,9 +215,12 @@ async def list_agents(
     try:
         print(f"[API_ADMIN] Listando agentes - search={search}, llm={llm}, status={status}")
         
+        # Obter instância do Database (lazy initialization)
+        db_instance = get_db()
+        
         # Verificar se a tabela existe
         try:
-            query = db.supabase.table("agents").select("*")
+            query = db_instance.supabase.table("agents").select("*")
             
             if status:
                 query = query.eq("status", status)
@@ -215,7 +263,8 @@ async def list_agents(
 async def get_agent(agent_id: str):
     """Busca um agente específico"""
     try:
-        result = db.supabase.table("agents").select("*").eq("id", agent_id).execute()
+        db_instance = get_db()
+        result = db_instance.supabase.table("agents").select("*").eq("id", agent_id).execute()
         if not result.data:
             raise HTTPException(status_code=404, detail="Agente não encontrado")
         return result.data[0]
@@ -378,8 +427,9 @@ async def test_agent(agent_id: str, request: TestMessageRequest):
 async def list_llm_providers():
     """Lista todos os provedores de LLM com suas configurações"""
     try:
+        db_instance = get_db()
         # Buscar configurações do banco
-        result = db.supabase.table("llm_providers").select("*").execute()
+        result = db_instance.supabase.table("llm_providers").select("*").execute()
         providers_data = result.data if result.data else []
         
         # Criar dicionário com providers padrão
@@ -688,28 +738,30 @@ async def get_dashboard_stats():
     try:
         from datetime import datetime, timedelta
         
+        db_instance = get_db()
+        
         # Total de agentes ativos
-        agents_result = db.supabase.table("agents").select("id").eq("status", "active").execute()
+        agents_result = db_instance.supabase.table("agents").select("id").eq("status", "active").execute()
         total_agents = len(agents_result.data) if agents_result.data else 0
         
         # Agentes criados este mês
         now = datetime.now()
         first_day_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        agents_this_month_result = db.supabase.table("agents").select("id").eq("status", "active").gte("created_at", first_day_month.isoformat()).execute()
+        agents_this_month_result = db_instance.supabase.table("agents").select("id").eq("status", "active").gte("created_at", first_day_month.isoformat()).execute()
         agents_this_month = len(agents_this_month_result.data) if agents_this_month_result.data else 0
         
         # Total de debates
-        debates_result = db.supabase.table("debates").select("id").execute()
+        debates_result = db_instance.supabase.table("debates").select("id").execute()
         total_debates = len(debates_result.data) if debates_result.data else 0
         
         # Debates esta semana
         first_day_week = now - timedelta(days=now.weekday())
         first_day_week = first_day_week.replace(hour=0, minute=0, second=0, microsecond=0)
-        debates_this_week_result = db.supabase.table("debates").select("id").gte("created_at", first_day_week.isoformat()).execute()
+        debates_this_week_result = db_instance.supabase.table("debates").select("id").gte("created_at", first_day_week.isoformat()).execute()
         debates_this_week = len(debates_this_week_result.data) if debates_this_week_result.data else 0
         
         # LLMs configurados (providers conectados na tabela llm_providers)
-        llms_providers_result = db.supabase.table("llm_providers").select("provider, config, status").eq("status", "connected").execute()
+        llms_providers_result = db_instance.supabase.table("llm_providers").select("provider, config, status").eq("status", "connected").execute()
         unique_providers = set()
         provider_models = {}
         
@@ -721,10 +773,10 @@ async def get_dashboard_stats():
                     config = provider_data.get("config", {}) or {}
                     enabled_models = config.get("enabled_models", [])
                     if enabled_models:
-                    if provider not in provider_models:
-                        provider_models[provider] = set()
+                        if provider not in provider_models:
+                            provider_models[provider] = set()
                         for model in enabled_models:
-                        provider_models[provider].add(model)
+                            provider_models[provider].add(model)
         
         # Formatar lista de LLMs
         llms_list = []
@@ -742,7 +794,7 @@ async def get_dashboard_stats():
         # Uso de API (simulado por enquanto - poderia rastrear tokens de fato)
         # Por enquanto, retorna um percentual baseado em debates realizados
         # Considerando um limite mensal simulado baseado em debates deste mês
-        debates_this_month_result = db.supabase.table("debates").select("id").gte("created_at", first_day_month.isoformat()).execute()
+        debates_this_month_result = db_instance.supabase.table("debates").select("id").gte("created_at", first_day_month.isoformat()).execute()
         debates_this_month = len(debates_this_month_result.data) if debates_this_month_result.data else 0
         estimated_monthly_limit = 1000  # Limite simulado
         api_usage_percent = min(100, int((debates_this_month / estimated_monthly_limit) * 100)) if estimated_monthly_limit > 0 else 0
@@ -751,7 +803,7 @@ async def get_dashboard_stats():
         recent_activities = []
         
         # Agentes criados recentemente
-        recent_agents = db.supabase.table("agents").select("name, created_at").order("created_at", desc=True).limit(3).execute()
+        recent_agents = db_instance.supabase.table("agents").select("name, created_at").order("created_at", desc=True).limit(3).execute()
         if recent_agents.data:
             for agent in recent_agents.data:
                 recent_activities.append({
@@ -761,7 +813,7 @@ async def get_dashboard_stats():
                 })
         
         # Debates iniciados recentemente
-        recent_debates = db.supabase.table("debates").select("pergunta, created_at").order("created_at", desc=True).limit(3).execute()
+        recent_debates = db_instance.supabase.table("debates").select("pergunta, created_at").order("created_at", desc=True).limit(3).execute()
         if recent_debates.data:
             for debate in recent_debates.data:
                 debate_pergunta = debate.get('pergunta', 'Debate')
@@ -774,7 +826,7 @@ async def get_dashboard_stats():
                 })
         
         # LLMs configurados recentemente (usar updated_at ou created_at)
-        recent_llms = db.supabase.table("llm_providers").select("provider, updated_at, created_at, status").eq("status", "connected").order("updated_at", desc=True).limit(3).execute()
+        recent_llms = db_instance.supabase.table("llm_providers").select("provider, updated_at, created_at, status").eq("status", "connected").order("updated_at", desc=True).limit(3).execute()
         if recent_llms.data:
             for llm in recent_llms.data:
                 provider = llm.get("provider", "").upper()
