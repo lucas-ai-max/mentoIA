@@ -496,10 +496,15 @@ async def delete_debate(debate_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao deletar debate: {str(e)}")
 
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {"status": "ok", "message": "BillIA API is running"}
+
 @app.get("/api/health")
 async def health():
     """Health check"""
-    return {"status": "ok"}
+    return {"status": "ok", "service": "mentoia-api"}
 
 # ========== ENDPOINTS PARA PASTAS ==========
 
