@@ -33,24 +33,37 @@ print(f"[API_SERVER] Tipo de admin_router: {type(admin_router)}")
 # Inicializar banco de dados
 # IMPORTANTE: Usar a mesma instância do Database que está em api_admin.py
 # para garantir consistência
-db = Database()
-print(f"[API_SERVER] Database inicializado: {db}")
-
-# Testar conexão na inicialização
+# Tornar inicialização resiliente - não travar se houver problemas
+db = None
 try:
-    print("[API_SERVER] Iniciando servidor...")
-    if db.test_connection():
-        print("[API_SERVER] Conexao com Supabase OK")
-        if db.check_tables_exist():
-            print("[API_SERVER] Tabelas verificadas")
-        else:
-            print("[API_SERVER] AVISO: Tabelas podem nao existir. Execute supabase_schema.sql no Supabase")
-    else:
-        print("[API_SERVER] Aviso: Problemas na conexao com o banco de dados")
+    db = Database()
+    print(f"[API_SERVER] Database inicializado: {db}")
 except Exception as e:
-    print(f"[API_SERVER] Erro ao testar conexao: {str(e)}")
+    print(f"[API_SERVER] ERRO ao inicializar Database: {str(e)}")
     import traceback
     traceback.print_exc()
+    # Continuar mesmo sem banco (para permitir que o servidor inicie)
+    print("[API_SERVER] AVISO: Continuando sem Database. Algumas funcionalidades podem não funcionar.")
+
+# Testar conexão na inicialização (não bloquear se falhar)
+if db:
+    try:
+        print("[API_SERVER] Testando conexão com banco...")
+        if db.test_connection():
+            print("[API_SERVER] Conexao com Supabase OK")
+            if db.check_tables_exist():
+                print("[API_SERVER] Tabelas verificadas")
+            else:
+                print("[API_SERVER] AVISO: Tabelas podem nao existir. Execute supabase_schema.sql no Supabase")
+        else:
+            print("[API_SERVER] Aviso: Problemas na conexao com o banco de dados")
+    except Exception as e:
+        print(f"[API_SERVER] Erro ao testar conexao: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Continuar mesmo se o teste falhar
+else:
+    print("[API_SERVER] AVISO: Database não inicializado. Algumas funcionalidades podem não funcionar.")
 
 # CORS para permitir requisições do frontend
 # Obter origens permitidas das variáveis de ambiente
@@ -95,6 +108,9 @@ class DebateRequest(BaseModel):
 async def get_agents():
     """Retorna lista de agentes disponíveis do banco de dados"""
     try:
+        if not db:
+            # Fallback para agentes hardcoded se database não estiver disponível
+            return {"agentes": list(AGENTES_DISPONIVEIS.keys())}
         # Buscar agentes do banco de dados
         result = db.supabase.table("agents").select("*").execute()
         
@@ -141,6 +157,8 @@ async def start_debate(request: DebateRequest):
         usar_fallback = False
         
         try:
+            if not db:
+                raise HTTPException(status_code=503, detail="Database não disponível. Tente novamente em alguns instantes.")
             # Buscar todos os agentes selecionados do banco
             print(f"[DEBATE] Buscando {len(request.agentes)} agentes no banco de dados...")
             for idx, agente_id in enumerate(request.agentes):
@@ -354,18 +372,20 @@ async def start_debate(request: DebateRequest):
         # Salvar debate no banco de dados
         debate_id = None
         if request.salvar:
-        try:
-            debate_id = db.save_debate(
+            try:
+                if not db:
+                    raise HTTPException(status_code=503, detail="Database não disponível. Não foi possível salvar o debate.")
+                debate_id = db.save_debate(
                 pergunta=request.pergunta,
                 selected_agents=request.agentes,
                 num_rodadas=request.num_rodadas,
                 historico=historico,
                 sintese=sintese_final
-            )
-            print(f"[DEBATE] Debate salvo no banco com ID: {debate_id}")
-        except Exception as db_error:
-            print(f"[DEBATE] ERRO CRITICO ao salvar no banco: {str(db_error)}")
-            print(f"[DEBATE] Tipo do erro: {type(db_error).__name__}")
+                )
+                print(f"[DEBATE] Debate salvo no banco com ID: {debate_id}")
+            except Exception as db_error:
+                print(f"[DEBATE] ERRO CRITICO ao salvar no banco: {str(db_error)}")
+                print(f"[DEBATE] Tipo do erro: {type(db_error).__name__}")
             import traceback
             traceback.print_exc()
             debate_id = None
@@ -393,6 +413,8 @@ async def start_debate(request: DebateRequest):
 async def get_debate(debate_id: str):
     """Recupera um debate salvo"""
     try:
+        if not db:
+            raise HTTPException(status_code=503, detail="Database não disponível.")
         debate = db.get_debate(debate_id)
         if not debate:
             raise HTTPException(status_code=404, detail="Debate não encontrado")
@@ -406,6 +428,8 @@ async def get_debate(debate_id: str):
 async def list_debates(limit: int = 50):
     """Lista debates recentes"""
     try:
+        if not db:
+            return {"debates": []}
         debates = db.list_debates(limit)
         return {"debates": debates}
     except Exception as e:
@@ -415,6 +439,8 @@ async def list_debates(limit: int = 50):
 async def delete_debate(debate_id: str):
     """Deleta um debate"""
     try:
+        if not db:
+            raise HTTPException(status_code=503, detail="Database não disponível.")
         success = db.delete_debate(debate_id)
         if not success:
             raise HTTPException(status_code=500, detail="Erro ao deletar debate")
@@ -449,6 +475,8 @@ class MoveDebateRequest(BaseModel):
 async def create_folder(folder: FolderCreate):
     """Cria uma nova pasta"""
     try:
+        if not db:
+            raise HTTPException(status_code=503, detail="Database não disponível.")
         folder_id = db.create_folder(
             name=folder.name,
             icon=folder.icon,
@@ -462,6 +490,8 @@ async def create_folder(folder: FolderCreate):
 async def list_folders():
     """Lista todas as pastas com contagem de debates"""
     try:
+        if not db:
+            return {"folders": []}
         folders = db.list_folders()
         return {"folders": folders}
     except Exception as e:
@@ -471,6 +501,8 @@ async def list_folders():
 async def update_folder(folder_id: str, folder: FolderUpdate):
     """Atualiza uma pasta"""
     try:
+        if not db:
+            raise HTTPException(status_code=503, detail="Database não disponível.")
         success = db.update_folder(
             folder_id=folder_id,
             name=folder.name,
@@ -490,6 +522,8 @@ async def update_folder(folder_id: str, folder: FolderUpdate):
 async def delete_folder(folder_id: str):
     """Deleta uma pasta"""
     try:
+        if not db:
+            raise HTTPException(status_code=503, detail="Database não disponível.")
         success = db.delete_folder(folder_id)
         if success:
             return {"success": True}
@@ -504,6 +538,8 @@ async def delete_folder(folder_id: str):
 async def move_debate_to_folder(request: MoveDebateRequest):
     """Move um debate para uma pasta"""
     try:
+        if not db:
+            raise HTTPException(status_code=503, detail="Database não disponível.")
         success = db.move_debate_to_folder(
             debate_id=request.debate_id,
             folder_id=request.folder_id
