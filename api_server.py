@@ -140,8 +140,24 @@ else:
 
 print("[API_SERVER] ==========================================", flush=True)
 print("[API_SERVER] Módulo api_server carregado com sucesso!", flush=True)
+print(f"[API_SERVER] App object: {app}", flush=True)
+print(f"[API_SERVER] App title: {app.title}", flush=True)
+print(f"[API_SERVER] App routes count: {len(app.routes)}", flush=True)
+print(f"[API_SERVER] Database disponível: {db is not None}", flush=True)
+print(f"[API_SERVER] DebateCrew disponível: {DebateCrew is not None}", flush=True)
+print(f"[API_SERVER] AGENTES_DISPONIVEIS count: {len(AGENTES_DISPONIVEIS) if AGENTES_DISPONIVEIS else 0}", flush=True)
 print("[API_SERVER] App FastAPI pronto para iniciar", flush=True)
 print("[API_SERVER] ==========================================", flush=True)
+
+# Teste final: garantir que o app pode ser usado pelo uvicorn
+try:
+    # Verificar se o app tem o atributo necessário para o uvicorn
+    assert hasattr(app, 'routes'), "App não tem atributo 'routes'"
+    print("[API_SERVER] Teste final: App validado com sucesso", flush=True)
+except Exception as e:
+    print(f"[API_SERVER] ERRO no teste final: {str(e)}", flush=True)
+    import traceback
+    traceback.print_exc()
 
 class DebateRequest(BaseModel):
     agentes: List[str]
