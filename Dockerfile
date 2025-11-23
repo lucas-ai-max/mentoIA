@@ -29,5 +29,6 @@ COPY . .
 EXPOSE 8080
 
 # Comando para iniciar o servidor (Cloud Run define PORT=8080)
-# Usa 8080 como padrão (padrão do Cloud Run) se PORT não estiver definido
-CMD ["python", "-c", "import os, sys, uvicorn; port = int(os.getenv('PORT', 8080)); print(f'Starting server on port {port}', flush=True); sys.stdout.flush(); uvicorn.run('api_server:app', host='0.0.0.0', port=port, workers=1, log_level='info')"]
+# IMPORTANTE: --host 0.0.0.0 é obrigatório para Cloud Run escutar em todas as interfaces
+# O Cloud Run define a variável de ambiente PORT automaticamente (padrão: 8080)
+CMD ["sh", "-c", "uvicorn api_server:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --log-level info"]
