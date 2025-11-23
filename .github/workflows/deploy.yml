@@ -20,23 +20,36 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
       
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
       
       - name: Build and Push Docker image
         run: |
           export PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-          export IMAGE_NAME="gcr.io/$PROJECT_ID/mentoia-api:${{ github.sha }}"
+          export REGION="us-central1"
+          export REPOSITORY="docker-repo"
+          export IMAGE_NAME="us-central1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/mentoia-api:${{ github.sha }}"
+          
+          # Criar repositório se não existir
+          gcloud artifacts repositories create $REPOSITORY \
+            --repository-format=docker \
+            --location=$REGION \
+            --description="Docker repository for mentoia-api" || true
+          
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
       
       - name: Deploy to Cloud Run
         run: |
           export PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-          export IMAGE_NAME="gcr.io/$PROJECT_ID/mentoia-api:${{ github.sha }}"
+          export REGION="us-central1"
+          export REPOSITORY="docker-repo"
+          export IMAGE_NAME="us-central1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/mentoia-api:${{ github.sha }}"
+          
           gcloud run deploy mentoia-api \
             --image $IMAGE_NAME \
-            --region us-central1 \
+            --region $REGION \
             --platform managed \
             --allow-unauthenticated \
             --memory 2Gi \
@@ -46,4 +59,3 @@ jobs:
             --set-env-vars "ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}" \
             --set-env-vars "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" \
             --set-env-vars "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
-
