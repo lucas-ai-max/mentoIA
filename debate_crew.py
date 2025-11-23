@@ -90,103 +90,103 @@ class DebateCrew:
         })
         
         # Cada agente responde uma vez
-            for idx, agente in enumerate(self.agentes):
-                try:
-                    # Contexto: o que outros agentes já disseram
-                    contexto_anterior = self._obter_contexto_anterior(historico)
+        for idx, agente in enumerate(self.agentes):
+            try:
+                # Contexto: o que outros agentes já disseram
+                contexto_anterior = self._obter_contexto_anterior(historico)
+                
+                # Buscar contexto RAG se disponível (usando índice do agente)
+                rag_context = ""
+                if idx in self.rag_managers:
+                    rag_manager = self.rag_managers[idx]
+                    if rag_manager:
+                        rag_context = rag_manager.get_context(self.pergunta, k=2)
+                
+                # Criar prompt com contexto RAG
+                if rag_context:
+                    enhanced_prompt = f"""
+                    Você está participando de um debate sobre: {self.pergunta}
                     
-                    # Buscar contexto RAG se disponível (usando índice do agente)
-                    rag_context = ""
-                    if idx in self.rag_managers:
-                        rag_manager = self.rag_managers[idx]
-                        if rag_manager:
-                            rag_context = rag_manager.get_context(self.pergunta, k=2)
+                    Contexto do debate até agora:
+                    {contexto_anterior}
+                    {contexto_usuario_block}
                     
-                    # Criar prompt com contexto RAG
-                    if rag_context:
-                        enhanced_prompt = f"""
-                        Você está participando de um debate sobre: {self.pergunta}
-                        
-                        Contexto do debate até agora:
-                        {contexto_anterior}
-                        {contexto_usuario_block}
-                        
-                        Informações relevantes da sua base de conhecimento:
-                        {rag_context}
-                        
-                        Agora é sua vez de falar. Dê sua opinião sobre a questão, 
-                        considerando o que outros participantes já disseram e as informações 
-                        da sua base de conhecimento quando relevantes.
-                        Você pode concordar, discordar ou adicionar novas perspectivas.
-                        Seja autêntico à sua personalidade e estilo de comunicação.
-                        Mantenha sua resposta concisa mas impactante (2-3 parágrafos).
-                        """
-                    else:
-                        enhanced_prompt = f"""
-                        Você está participando de um debate sobre: {self.pergunta}
-                        
-                        Contexto do debate até agora:
-                        {contexto_anterior}
-                        {contexto_usuario_block}
-                        
-                        Agora é sua vez de falar. Dê sua opinião sobre a questão, 
-                        considerando o que outros participantes já disseram. 
-                        Você pode concordar, discordar ou adicionar novas perspectivas.
-                        Seja autêntico à sua personalidade e estilo de comunicação.
-                        Mantenha sua resposta concisa mas impactante (2-3 parágrafos).
-                        """
+                    Informações relevantes da sua base de conhecimento:
+                    {rag_context}
                     
-                    task = Task(
-                        description=enhanced_prompt,
-                        agent=agente,
-                        expected_output="Uma resposta clara e autêntica sobre a questão do debate"
-                    )
+                    Agora é sua vez de falar. Dê sua opinião sobre a questão, 
+                    considerando o que outros participantes já disseram e as informações 
+                    da sua base de conhecimento quando relevantes.
+                    Você pode concordar, discordar ou adicionar novas perspectivas.
+                    Seja autêntico à sua personalidade e estilo de comunicação.
+                    Mantenha sua resposta concisa mas impactante (2-3 parágrafos).
+                    """
+                else:
+                    enhanced_prompt = f"""
+                    Você está participando de um debate sobre: {self.pergunta}
                     
-                    # Executa a task
-                    crew = Crew(
-                        agents=[agente],
-                        tasks=[task],
-                        process=Process.sequential,
-                        verbose=True
-                    )
+                    Contexto do debate até agora:
+                    {contexto_anterior}
+                    {contexto_usuario_block}
                     
-                    resultado = crew.kickoff()
-                    
-                    # Obter nome do agente se disponível no mapeamento, senão usar role
-                    agente_nome = self.agentes_nomes_map.get(idx, agente.role)
-                    
-                    historico.append({
-                        "tipo": "resposta",
-                        "conteudo": str(resultado),
-                        "agente": agente_nome,  # Usar nome do agente em vez de apenas role
-                        "agente_role": agente.role  # Salvar role também para referência
-                    })
-                    
-                    # Pequena pausa para tornar o debate mais natural
-                    time.sleep(1)
-                    
-                except Exception as e:
-                    historico.append({
-                        "tipo": "erro",
-                        "conteudo": f"Erro ao processar resposta de {agente.role}: {str(e)}",
-                        "agente": "Sistema"
-                    })
+                    Agora é sua vez de falar. Dê sua opinião sobre a questão, 
+                    considerando o que outros participantes já disseram. 
+                    Você pode concordar, discordar ou adicionar novas perspectivas.
+                    Seja autêntico à sua personalidade e estilo de comunicação.
+                    Mantenha sua resposta concisa mas impactante (2-3 parágrafos).
+                    """
+                
+                task = Task(
+                    description=enhanced_prompt,
+                    agent=agente,
+                    expected_output="Uma resposta clara e autêntica sobre a questão do debate"
+                )
+                
+                # Executa a task
+                crew = Crew(
+                    agents=[agente],
+                    tasks=[task],
+                    process=Process.sequential,
+                    verbose=True
+                )
+                
+                resultado = crew.kickoff()
+                
+                # Obter nome do agente se disponível no mapeamento, senão usar role
+                agente_nome = self.agentes_nomes_map.get(idx, agente.role)
+                
+                historico.append({
+                    "tipo": "resposta",
+                    "conteudo": str(resultado),
+                    "agente": agente_nome,  # Usar nome do agente em vez de apenas role
+                    "agente_role": agente.role  # Salvar role também para referência
+                })
+                
+                # Pequena pausa para tornar o debate mais natural
+                time.sleep(1)
+                
+            except Exception as e:
+                historico.append({
+                    "tipo": "erro",
+                    "conteudo": f"Erro ao processar resposta de {agente.role}: {str(e)}",
+                    "agente": "Sistema"
+                })
         
         # Atualizar histórico ANTES de gerar síntese (se necessário)
         self.historico = historico
         
         # Só gerar síntese se should_generate_summary for True (modo 'sintese')
         if self.should_generate_summary:
-        print("🔄 Gerando síntese final do debate com agente facilitador...")
-        sintese = self.gerar_sintese_com_agente()
-        print(f"✅ Síntese gerada: {len(sintese)} caracteres")
-        
+            print("🔄 Gerando síntese final do debate com agente facilitador...")
+            sintese = self.gerar_sintese_com_agente()
+            print(f"✅ Síntese gerada: {len(sintese)} caracteres")
+            
             # Adicionar apenas o conteúdo da síntese, sem título
-        historico.append({
-            "tipo": "sintese_conteudo",
-            "conteudo": sintese,
-            "agente": "Facilitador"
-        })
+            historico.append({
+                "tipo": "sintese_conteudo",
+                "conteudo": sintese,
+                "agente": "Facilitador"
+            })
         
         # Atualizar histórico final
         self.historico = historico
