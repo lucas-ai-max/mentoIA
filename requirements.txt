@@ -1,6 +1,5 @@
-# Core framework
+# Core framework - API
 crewai==1.4.1
-streamlit==1.29.0
 python-dotenv==1.1.1
 fastapi==0.115.0
 uvicorn==0.32.0
@@ -10,8 +9,7 @@ pydantic==2.11.9
 supabase>=2.4.0
 psycopg2-binary==2.9.0
 
-# Data processing
-numpy==1.24.0
+# Data processing (RAG)
 pypdf==3.17.0
 python-docx==1.1.0
 
@@ -19,12 +17,12 @@ python-docx==1.1.0
 openai==1.13.3
 anthropic==0.25.0
 
-# Langchain - Apenas pacotes principais (sub-pacotes são instalados automaticamente)
+# Langchain - Apenas pacotes principais
 langchain
 langchain-openai
 langchain-anthropic
 langchain-google-genai
 google-generativeai
 
-# Fix para Python 3.11 - wrapt compatibilidade
+# Fix para Python 3.11
 wrapt>=1.14.0
