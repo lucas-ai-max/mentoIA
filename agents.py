@@ -206,15 +206,38 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
         if api_key:
             print(f"[AGENTS] Usando API key do arquivo .env para {llm_provider}")
     
-    # Validar se encontrou alguma chave
-    if not api_key:
-        raise ValueError(f"API key não encontrada para o provedor '{llm_provider}'. Configure no Admin -> LLMs ou no arquivo .env")
+    # Validar se encontrou alguma chave (mais rigoroso)
+    if not api_key or not str(api_key).strip():
+        agent_name = agent_data.get('name', 'Desconhecido')
+        raise ValueError(
+            f"API key não encontrada para o provedor '{llm_provider}'. "
+            f"Configure no Admin -> LLMs (seção 'Provedores LLM') ou no arquivo .env. "
+            f"O agente '{agent_name}' precisa de uma API key válida para funcionar."
+        )
+    
+    # Garantir que api_key não seja vazio após strip
+    api_key = str(api_key).strip()
+    if not api_key or len(api_key) < 10:  # API keys geralmente têm mais de 10 caracteres
+        agent_name = agent_data.get('name', 'Desconhecido')
+        raise ValueError(
+            f"API key inválida para o provedor '{llm_provider}'. "
+            f"A chave parece estar vazia ou muito curta. Configure no Admin -> LLMs. "
+            f"Agente: '{agent_name}'"
+        )
     
     # Obter max_tokens do agent_data (padrão: 1000)
     max_tokens = int(agent_data.get("max_tokens", 1000))
     
     # Configurar LLM baseado no provider
     if llm_provider == "openai":
+        # Validar novamente antes de criar (segurança extra)
+        if not api_key or len(api_key) < 10:
+            agent_name = agent_data.get('name', 'Desconhecido')
+            raise ValueError(
+                f"API key inválida para OpenAI. Configure no Admin -> LLMs. "
+                f"Agente: '{agent_name}'"
+            )
+        
         llm = ChatOpenAI(
             model=agent_data.get("llm_model", "gpt-4"),
             temperature=float(agent_data.get("temperature", 0.7)),
@@ -222,6 +245,14 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
             api_key=api_key
         )
     elif llm_provider == "anthropic":
+        # Validar novamente antes de criar (segurança extra)
+        if not api_key or len(api_key) < 10:
+            agent_name = agent_data.get('name', 'Desconhecido')
+            raise ValueError(
+                f"API key inválida para Anthropic. Configure no Admin -> LLMs. "
+                f"Agente: '{agent_name}'"
+            )
+        
         llm = ChatAnthropic(
             model=agent_data.get("llm_model", "claude-3-5-sonnet-20241022"),
             temperature=float(agent_data.get("temperature", 0.7)),
@@ -229,6 +260,14 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
             api_key=api_key
         )
     elif llm_provider == "google":
+        # Validar novamente antes de criar (segurança extra)
+        if not api_key or len(api_key) < 10:
+            agent_name = agent_data.get('name', 'Desconhecido')
+            raise ValueError(
+                f"API key inválida para Google. Configure no Admin -> LLMs. "
+                f"Agente: '{agent_name}'"
+            )
+        
         # Google Gemini - suporte básico (precisa de biblioteca adicional)
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
@@ -256,6 +295,14 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
         except Exception as e:
             raise ValueError(f"Erro ao configurar Google Gemini: {str(e)}")
     else:
+        # Validar novamente antes de criar (segurança extra)
+        if not api_key or len(api_key) < 10:
+            agent_name = agent_data.get('name', 'Desconhecido')
+            raise ValueError(
+                f"API key inválida para o provedor '{llm_provider}'. Configure no Admin -> LLMs. "
+                f"Agente: '{agent_name}'"
+            )
+        
         # Default para OpenAI
         llm = ChatOpenAI(
             model="gpt-4",
