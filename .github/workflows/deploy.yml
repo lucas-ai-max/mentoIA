@@ -56,7 +56,7 @@ jobs:
             --cpu 2 \
             --timeout 600 \
             --cpu-throttling \
-            --startup-cpu-boost \
+            --cpu-boost \
             --max-instances 10 \
             --set-env-vars "ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}" \
             --set-env-vars "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" \
