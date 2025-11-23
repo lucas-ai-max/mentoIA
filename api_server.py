@@ -309,11 +309,8 @@ async def start_debate(request: DebateRequest):
         try:
             for i, nome in enumerate(nomes_agentes):
                 try:
-                    if usar_fallback or nome in AGENTES_DISPONIVEIS:
-                        # Usar agente hardcoded se existir ou se estiver usando fallback
-                        agentes_crewai.append(obter_agente(nome))
-                        # Agentes hardcoded não têm RAG
-                    elif i < len(agentes_data):
+                    # PRIORIDADE 1: Se temos dados do banco, SEMPRE usar agente dinâmico
+                    if i < len(agentes_data):
                         # Usar agente dinâmico do banco com RAG habilitado
                         agent_data = agentes_data[i]
                         agent_id = str(agent_data.get("id", ""))
@@ -323,6 +320,11 @@ async def start_debate(request: DebateRequest):
                         if agent_id:
                             rag_managers[i] = RAGManager(agent_id, database=db)
                             agent_ids_map[i] = agent_id
+                    # PRIORIDADE 2: Só usar hardcoded se NÃO tivermos dados do banco
+                    elif usar_fallback or nome in AGENTES_DISPONIVEIS:
+                        # Usar agente hardcoded se existir ou se estiver usando fallback
+                        agentes_crewai.append(obter_agente(nome))
+                        # Agentes hardcoded não têm RAG
                     else:
                         raise HTTPException(
                             status_code=400,
