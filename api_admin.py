@@ -721,10 +721,10 @@ async def get_dashboard_stats():
                     config = provider_data.get("config", {}) or {}
                     enabled_models = config.get("enabled_models", [])
                     if enabled_models:
-                        if provider not in provider_models:
-                            provider_models[provider] = set()
+                    if provider not in provider_models:
+                        provider_models[provider] = set()
                         for model in enabled_models:
-                            provider_models[provider].add(model)
+                        provider_models[provider].add(model)
         
         # Formatar lista de LLMs
         llms_list = []
