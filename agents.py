@@ -49,9 +49,14 @@ def criar_elon_musk():
         "verbose": True,
         "allow_delegation": False
     }
-    # Só adicionar llm se não for None (evita que CrewAI tente criar automaticamente)
+    # Adicionar LLM se disponível
     if agent_llm is not None:
         agent_params["llm"] = agent_llm
+    else:
+        # Se não há LLM disponível, logar warning mas continuar
+        print(f"[AGENTS] AVISO: Criando {agent_params['role']} sem LLM específico")
+        # CrewAI tentará criar LLM automaticamente (pode falhar)
+    
     return Agent(**agent_params)
 
 def criar_bill_gates():
@@ -66,9 +71,14 @@ def criar_bill_gates():
         "verbose": True,
         "allow_delegation": False
     }
-    # Só adicionar llm se não for None (evita que CrewAI tente criar automaticamente)
+    # Adicionar LLM se disponível
     if llm is not None:
         agent_params["llm"] = llm
+    else:
+        # Se não há LLM disponível, logar warning mas continuar
+        print(f"[AGENTS] AVISO: Criando {agent_params['role']} sem LLM específico")
+        # CrewAI tentará criar LLM automaticamente (pode falhar)
+    
     return Agent(**agent_params)
 
 def criar_jeff_bezos():
@@ -84,9 +94,14 @@ def criar_jeff_bezos():
         "verbose": True,
         "allow_delegation": False
     }
-    # Só adicionar llm se não for None (evita que CrewAI tente criar automaticamente)
+    # Adicionar LLM se disponível
     if llm is not None:
         agent_params["llm"] = llm
+    else:
+        # Se não há LLM disponível, logar warning mas continuar
+        print(f"[AGENTS] AVISO: Criando {agent_params['role']} sem LLM específico")
+        # CrewAI tentará criar LLM automaticamente (pode falhar)
+    
     return Agent(**agent_params)
 
 def criar_mark_zuckerberg():
@@ -102,9 +117,14 @@ def criar_mark_zuckerberg():
         "verbose": True,
         "allow_delegation": False
     }
-    # Só adicionar llm se não for None (evita que CrewAI tente criar automaticamente)
+    # Adicionar LLM se disponível
     if llm is not None:
         agent_params["llm"] = llm
+    else:
+        # Se não há LLM disponível, logar warning mas continuar
+        print(f"[AGENTS] AVISO: Criando {agent_params['role']} sem LLM específico")
+        # CrewAI tentará criar LLM automaticamente (pode falhar)
+    
     return Agent(**agent_params)
 
 def criar_tim_cook():
@@ -120,9 +140,14 @@ def criar_tim_cook():
         "verbose": True,
         "allow_delegation": False
     }
-    # Só adicionar llm se não for None (evita que CrewAI tente criar automaticamente)
+    # Adicionar LLM se disponível
     if llm is not None:
         agent_params["llm"] = llm
+    else:
+        # Se não há LLM disponível, logar warning mas continuar
+        print(f"[AGENTS] AVISO: Criando {agent_params['role']} sem LLM específico")
+        # CrewAI tentará criar LLM automaticamente (pode falhar)
+    
     return Agent(**agent_params)
 
 def criar_facilitador():
@@ -138,9 +163,14 @@ def criar_facilitador():
         "verbose": True,
         "allow_delegation": False
     }
-    # Só adicionar llm se não for None (evita que CrewAI tente criar automaticamente)
+    # Adicionar LLM se disponível
     if llm is not None:
         agent_params["llm"] = llm
+    else:
+        # Se não há LLM disponível, logar warning mas continuar
+        print(f"[AGENTS] AVISO: Criando {agent_params['role']} sem LLM específico")
+        # CrewAI tentará criar LLM automaticamente (pode falhar)
+    
     return Agent(**agent_params)
 
 # Dicionário com todos os agentes disponíveis
@@ -322,6 +352,17 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
             api_key=api_key
         )
     
+    # Validar que LLM foi criado com sucesso
+    if llm is None:
+        agent_name = agent_data.get('name', 'Desconhecido')
+        raise ValueError(
+            f"Falha ao criar LLM para o agente '{agent_name}'. "
+            f"Provider: {llm_provider}, Model: {agent_data.get('llm_model')}. "
+            f"Verifique se a API key está configurada corretamente."
+        )
+    
+    print(f"[AGENTS] LLM criado com sucesso: {type(llm).__name__}")
+    
     # Tratar verbose - pode vir como string do banco
     verbose = agent_data.get("verbose", True)
     if isinstance(verbose, str):
@@ -351,17 +392,15 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
     else:
         backstory = base_backstory
     
-    # Só passar llm se não for None (evita que CrewAI tente criar automaticamente)
+    # Criar agent com LLM (já validamos que não é None)
     agent_params = {
         "role": agent_data.get("role", ""),
         "goal": agent_data.get("goal", ""),
         "backstory": backstory,
         "verbose": verbose,
-        "allow_delegation": allow_delegation
+        "allow_delegation": allow_delegation,
+        "llm": llm  # Sempre passar - já validamos
     }
-    # Só adicionar llm se não for None (evita que CrewAI tente criar automaticamente)
-    if llm is not None:
-        agent_params["llm"] = llm
     
     agent = Agent(**agent_params)
     
