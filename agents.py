@@ -158,6 +158,43 @@ def obter_agente(nome: str) -> Agent:
         return AGENTES_DISPONIVEIS[nome]()
     raise ValueError(f"Agente '{nome}' não encontrado")
 
+def validar_api_key(api_key, provider: str, agent_name: str) -> str:
+    """
+    Valida API key de forma rigorosa antes de usar.
+    Retorna a chave válida ou levanta ValueError com mensagem clara.
+    """
+    # Lista de valores que devem ser tratados como "sem chave"
+    VALORES_INVALIDOS = ["placeholder", "none", "", "null", "your_key_here", "sua_chave_aqui"]
+    
+    # Verificar se é None ou vazio
+    if not api_key:
+        raise ValueError(
+            f"API key não encontrada para o provedor '{provider}'. "
+            f"Configure no Admin -> LLMs ou no arquivo .env. "
+            f"Agente: '{agent_name}'"
+        )
+    
+    # Converter para string e limpar
+    api_key_str = str(api_key).strip()
+    
+    # Verificar se é um valor placeholder
+    if api_key_str.lower() in VALORES_INVALIDOS:
+        raise ValueError(
+            f"API key é um valor placeholder para '{provider}'. "
+            f"Configure uma chave válida no Admin -> LLMs. "
+            f"Agente: '{agent_name}'"
+        )
+    
+    # Verificar tamanho mínimo (API keys geralmente têm 20+ caracteres)
+    if len(api_key_str) < 20:
+        raise ValueError(
+            f"API key muito curta para '{provider}' (tem {len(api_key_str)} caracteres). "
+            f"Configure uma chave válida no Admin -> LLMs. "
+            f"Agente: '{agent_name}'"
+        )
+    
+    return api_key_str
+
 def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None) -> Agent:
     """Cria um agente dinamicamente a partir de dados do banco"""
     from langchain_openai import ChatOpenAI
@@ -173,7 +210,10 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
     
     # Buscar API key: primeiro do banco de dados, depois do .env como fallback
     llm_provider = agent_data.get("llm_provider", "openai").lower()
+    agent_name = agent_data.get('name', 'Desconhecido')
     api_key = None
+    
+    print(f"[AGENTS] Buscando API key para {llm_provider} (agente: {agent_name})")
     
     # Tentar buscar do banco de dados primeiro
     if database:
@@ -209,38 +249,19 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
         if api_key:
             print(f"[AGENTS] Usando API key do arquivo .env para {llm_provider}")
     
-    # Validar se encontrou alguma chave (mais rigoroso)
-    if not api_key or not str(api_key).strip():
-        agent_name = agent_data.get('name', 'Desconhecido')
-        raise ValueError(
-            f"API key não encontrada para o provedor '{llm_provider}'. "
-            f"Configure no Admin -> LLMs (seção 'Provedores LLM') ou no arquivo .env. "
-            f"O agente '{agent_name}' precisa de uma API key válida para funcionar."
-        )
-    
-    # Garantir que api_key não seja vazio após strip
-    api_key = str(api_key).strip()
-    if not api_key or len(api_key) < 10:  # API keys geralmente têm mais de 10 caracteres
-        agent_name = agent_data.get('name', 'Desconhecido')
-        raise ValueError(
-            f"API key inválida para o provedor '{llm_provider}'. "
-            f"A chave parece estar vazia ou muito curta. Configure no Admin -> LLMs. "
-            f"Agente: '{agent_name}'"
-        )
+    # VALIDAÇÃO RIGOROSA antes de criar LLM
+    try:
+        api_key = validar_api_key(api_key, llm_provider, agent_name)
+        print(f"[AGENTS] API key validada para {llm_provider}: {api_key[:7]}...{api_key[-4:]}")
+    except ValueError as e:
+        print(f"[AGENTS] ERRO: {str(e)}")
+        raise
     
     # Obter max_tokens do agent_data (padrão: 1000)
     max_tokens = int(agent_data.get("max_tokens", 1000))
     
     # Configurar LLM baseado no provider
     if llm_provider == "openai":
-        # Validar novamente antes de criar (segurança extra)
-        if not api_key or len(api_key) < 10:
-            agent_name = agent_data.get('name', 'Desconhecido')
-            raise ValueError(
-                f"API key inválida para OpenAI. Configure no Admin -> LLMs. "
-                f"Agente: '{agent_name}'"
-            )
-        
         llm = ChatOpenAI(
             model=agent_data.get("llm_model", "gpt-4"),
             temperature=float(agent_data.get("temperature", 0.7)),
@@ -248,14 +269,6 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
             api_key=api_key
         )
     elif llm_provider == "anthropic":
-        # Validar novamente antes de criar (segurança extra)
-        if not api_key or len(api_key) < 10:
-            agent_name = agent_data.get('name', 'Desconhecido')
-            raise ValueError(
-                f"API key inválida para Anthropic. Configure no Admin -> LLMs. "
-                f"Agente: '{agent_name}'"
-            )
-        
         llm = ChatAnthropic(
             model=agent_data.get("llm_model", "claude-3-5-sonnet-20241022"),
             temperature=float(agent_data.get("temperature", 0.7)),
@@ -263,14 +276,6 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
             api_key=api_key
         )
     elif llm_provider == "google":
-        # Validar novamente antes de criar (segurança extra)
-        if not api_key or len(api_key) < 10:
-            agent_name = agent_data.get('name', 'Desconhecido')
-            raise ValueError(
-                f"API key inválida para Google. Configure no Admin -> LLMs. "
-                f"Agente: '{agent_name}'"
-            )
-        
         # Google Gemini - suporte básico (precisa de biblioteca adicional)
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
@@ -298,14 +303,6 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
         except Exception as e:
             raise ValueError(f"Erro ao configurar Google Gemini: {str(e)}")
     else:
-        # Validar novamente antes de criar (segurança extra)
-        if not api_key or len(api_key) < 10:
-            agent_name = agent_data.get('name', 'Desconhecido')
-            raise ValueError(
-                f"API key inválida para o provedor '{llm_provider}'. Configure no Admin -> LLMs. "
-                f"Agente: '{agent_name}'"
-            )
-        
         # Default para OpenAI
         llm = ChatOpenAI(
             model="gpt-4",
