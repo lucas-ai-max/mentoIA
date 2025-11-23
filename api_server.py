@@ -2,15 +2,54 @@
 Servidor API Python para integração com a interface web Next.js
 Execute: python api_server.py
 """
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Dict, Optional
-from agents import AGENTES_DISPONIVEIS
-from debate_crew import DebateCrew
-from database import Database
-import uvicorn
+import sys
 import os
+
+# Adicionar logs de inicialização imediatamente
+print("[API_SERVER] Iniciando importações...", flush=True)
+
+try:
+    from fastapi import FastAPI, HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
+    from pydantic import BaseModel
+    from typing import List, Dict, Optional
+    print("[API_SERVER] FastAPI importado com sucesso", flush=True)
+except Exception as e:
+    print(f"[API_SERVER] ERRO ao importar FastAPI: {str(e)}", flush=True)
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
+
+try:
+    from agents import AGENTES_DISPONIVEIS
+    print("[API_SERVER] Agents importado com sucesso", flush=True)
+except Exception as e:
+    print(f"[API_SERVER] ERRO ao importar agents: {str(e)}", flush=True)
+    import traceback
+    traceback.print_exc()
+    # Continuar mesmo se agents falhar (pode usar fallback)
+    AGENTES_DISPONIVEIS = {}
+
+try:
+    from debate_crew import DebateCrew
+    print("[API_SERVER] DebateCrew importado com sucesso", flush=True)
+except Exception as e:
+    print(f"[API_SERVER] ERRO ao importar debate_crew: {str(e)}", flush=True)
+    import traceback
+    traceback.print_exc()
+    DebateCrew = None
+
+try:
+    from database import Database
+    print("[API_SERVER] Database importado com sucesso", flush=True)
+except Exception as e:
+    print(f"[API_SERVER] ERRO ao importar database: {str(e)}", flush=True)
+    import traceback
+    traceback.print_exc()
+    Database = None
+
+import uvicorn
+print("[API_SERVER] Uvicorn importado com sucesso", flush=True)
 
 # Importar router de admin com tratamento de erro
 admin_router = None
@@ -25,10 +64,11 @@ except Exception as e:
     traceback.print_exc()
 
 app = FastAPI(title="BillIA API")
+print("[API_SERVER] FastAPI app criado com sucesso", flush=True)
 
 # Verificar se admin_router foi importado
-print(f"[API_SERVER] admin_router apos importacao: {admin_router}")
-print(f"[API_SERVER] Tipo de admin_router: {type(admin_router)}")
+print(f"[API_SERVER] admin_router apos importacao: {admin_router}", flush=True)
+print(f"[API_SERVER] Tipo de admin_router: {type(admin_router)}", flush=True)
 
 # Inicializar banco de dados
 # IMPORTANTE: Usar a mesma instância do Database que está em api_admin.py
@@ -82,6 +122,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+print("[API_SERVER] CORS middleware configurado", flush=True)
 
 # Registrar router de admin ANTES das outras rotas
 if admin_router:
@@ -94,7 +135,12 @@ if admin_router:
     if admin_routes:
         print(f"[API_SERVER] Exemplos: {admin_routes[:3]}")
 else:
-    print("[API_SERVER] AVISO: Router de admin nao foi registrado")
+    print("[API_SERVER] AVISO: Router de admin nao foi registrado", flush=True)
+
+print("[API_SERVER] ==========================================", flush=True)
+print("[API_SERVER] Módulo api_server carregado com sucesso!", flush=True)
+print("[API_SERVER] App FastAPI pronto para iniciar", flush=True)
+print("[API_SERVER] ==========================================", flush=True)
 
 class DebateRequest(BaseModel):
     agentes: List[str]
