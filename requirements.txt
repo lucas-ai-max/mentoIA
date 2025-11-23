@@ -1,3 +1,14 @@
+# Core - force versões novas que aceitam Protobuf 5
+protobuf>=5.29.0
+google-generativeai>=0.8.3
+google-ai-generativelanguage>=0.6.10
+langchain-google-genai>=2.0.0
+
+# CrewAI e Telemetria (fixar versões para evitar conflitos)
+opentelemetry-api>=1.30.0
+opentelemetry-sdk>=1.30.0
+opentelemetry-exporter-otlp-proto-http>=1.30.0
+
 # Core framework - API
 crewai==1.4.1
 python-dotenv==1.1.1
@@ -21,8 +32,6 @@ anthropic==0.25.0
 langchain
 langchain-openai
 langchain-anthropic
-langchain-google-genai
-google-generativeai
 
 # Fix para Python 3.11
 wrapt>=1.14.0
