@@ -392,9 +392,9 @@ async def start_debate(request: DebateRequest):
             # Ignorar síntese e sintese_conteudo - serão processadas separadamente
             if item["tipo"] in ["sintese", "sintese_conteudo"]:
                 if item["tipo"] == "sintese_conteudo" and summary_mode:
-                sintese_final = item["conteudo"]
-                print(f"[DEBATE] Sintese encontrada: {len(sintese_final)} caracteres")
-                print(f"[DEBATE] Primeiros 200 caracteres: {sintese_final[:200]}...")
+                    sintese_final = item["conteudo"]
+                    print(f"[DEBATE] Sintese encontrada: {len(sintese_final)} caracteres")
+                    print(f"[DEBATE] Primeiros 200 caracteres: {sintese_final[:200]}...")
                 continue
             
             # Para respostas, verificar se o agente está nos selecionados
