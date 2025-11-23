@@ -268,16 +268,39 @@ class DebateCrew:
             return error_msg
     
     def _obter_contexto_anterior(self, historico: List[Dict]) -> str:
-        """Extrai o contexto das respostas anteriores"""
-        contexto = []
-        for item in historico:
-            if item["tipo"] == "resposta":
-                contexto.append(f"{item['agente']}: {item['conteudo']}")
+        """Extrai o contexto das respostas anteriores, agrupadas por rodada"""
+        # Filtrar apenas respostas (ignorar pergunta, síntese, erros, etc)
+        respostas = [item for item in historico if item.get("tipo") == "resposta"]
         
-        if not contexto:
+        if not respostas:
             return "Este é o início do debate. Seja o primeiro a dar sua opinião."
         
-        return "\n".join(contexto[-len(self.agentes):])  # Últimas respostas
+        # Agrupar respostas por rodada
+        # Cada rodada tem N respostas (onde N = número de agentes)
+        num_agentes = len(self.agentes)
+        rodadas = []
+        
+        for i in range(0, len(respostas), num_agentes):
+            rodada_num = (i // num_agentes) + 1
+            respostas_rodada = respostas[i:i + num_agentes]
+            
+            # Formatar respostas da rodada
+            respostas_formatadas = []
+            for resposta in respostas_rodada:
+                agente_nome = resposta.get('agente', 'Desconhecido')
+                conteudo = resposta.get('conteudo', '')
+                respostas_formatadas.append(f"{agente_nome}: {conteudo}")
+            
+            # Adicionar marcador de rodada e respostas
+            rodadas.append(f"--- RODADA {rodada_num} ---")
+            rodadas.extend(respostas_formatadas)
+            rodadas.append("")  # Linha em branco entre rodadas
+        
+        # Remover última linha em branco se existir
+        if rodadas and rodadas[-1] == "":
+            rodadas.pop()
+        
+        return "\n".join(rodadas)
 
     def _build_history_from_context(self) -> List[Dict]:
         historico = []
