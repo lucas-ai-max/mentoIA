@@ -567,16 +567,15 @@ async def update_llm_provider(provider: str, config: LLMProviderUpdate):
             else:
                 # Armazenar API key (em produção, criptografar)
                 update_data["api_key_encrypted"] = config.api_key
-                # NÃO marcar como connected ao salvar - só após teste bem-sucedido
-                # Se já estava connected, manter; caso contrário, deixar como disconnected
-                if existing.data and len(existing.data) > 0:
-                    current_status = existing.data[0].get("status", "disconnected")
-                    if current_status != "connected":
-                        update_data["status"] = "disconnected"
+                # Se status foi fornecido explicitamente, usar ele; caso contrário, desconectar ao salvar nova chave
+                if config.status:
+                    update_data["status"] = config.status
                 else:
+                    # Ao salvar nova chave, sempre desconectar até testar novamente
                     update_data["status"] = "disconnected"
         
-        if config.status:
+        # Se status foi fornecido explicitamente (mesmo sem api_key), usar ele
+        if config.status and "status" not in update_data:
             update_data["status"] = config.status
         
         if config.enabled_models is not None:
