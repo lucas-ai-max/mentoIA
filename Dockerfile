@@ -25,12 +25,9 @@ RUN uv pip install --system --no-cache -r requirements.txt
 # Copiar código da aplicação
 COPY . .
 
-# Copiar e tornar entrypoint.sh executável
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
 # Expor porta (Cloud Run define PORT automaticamente, padrão é 8080)
 EXPOSE 8080
 
-# Usar entrypoint script (garante que o servidor sempre inicia corretamente)
-ENTRYPOINT ["/entrypoint.sh"]
+# Comando direto (não sofre com CRLF)
+# Cloud Run injeta PORT automaticamente, então usamos variável de ambiente
+CMD ["sh", "-c", "uvicorn api_server:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --log-level info --timeout-keep-alive 600 --access-log --no-use-colors"]
