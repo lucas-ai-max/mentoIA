@@ -1,5 +1,5 @@
 # --- Core ---
-crewai==1.4.1
+crewai[google-genai]==1.4.1
 
 # --- API Framework ---
 fastapi
