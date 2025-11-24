@@ -2,6 +2,7 @@
 Módulo com a lógica de orquestração do debate
 """
 import os
+import traceback
 
 # ⚠️ CRÍTICO: Desabilitar fallback do LiteLLM ANTES de importar CrewAI
 # Isso evita erros quando LLM não está disponível
@@ -153,7 +154,8 @@ class DebateCrew:
                     agents=[agente],
                     tasks=[task],
                     process=Process.sequential,
-                    verbose=True
+                    verbose=True,
+                    memory=False  # Desabilitar memória nativa para evitar erros de embedding/chave
                 )
                 
                 resultado = crew.kickoff()
@@ -172,6 +174,15 @@ class DebateCrew:
                 time.sleep(1)
                 
             except Exception as e:
+                # Log detalhado do erro para debugging
+                error_traceback = traceback.format_exc()
+                print(f"❌ ERRO CRÍTICO NO DEBATE ao processar resposta de {agente.role}:")
+                print(f"❌ Tipo do erro: {type(e).__name__}")
+                print(f"❌ Mensagem: {str(e)}")
+                print(f"❌ Traceback completo:")
+                print(error_traceback)
+                traceback.print_exc()  # Também imprimir no stderr padrão
+                
                 historico.append({
                     "tipo": "erro",
                     "conteudo": f"Erro ao processar resposta de {agente.role}: {str(e)}",
@@ -249,7 +260,8 @@ class DebateCrew:
                 agents=[facilitador],
                 tasks=[task_sintese],
                 process=Process.sequential,
-                verbose=True
+                verbose=True,
+                memory=False  # Desabilitar memória nativa para evitar erros de embedding/chave
             )
             
             resultado = crew.kickoff()
@@ -269,7 +281,6 @@ class DebateCrew:
         except Exception as e:
             error_msg = f"Erro ao gerar síntese: {str(e)}"
             print(f"❌ {error_msg}")
-            import traceback
             traceback.print_exc()
             return error_msg
     
