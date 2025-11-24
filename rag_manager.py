@@ -25,26 +25,52 @@ class RAGManager:
         self.database = database
         
         # Buscar chave da OpenAI para RAG (embeddings)
-        # Prioridade: 1) OPENAI_API_KEY_RAG (específica para RAG), 2) OPENAI_API_KEY (geral)
+        # Prioridade: 1) Variáveis de ambiente, 2) Banco de dados (se database fornecido)
         api_key = os.getenv("OPENAI_API_KEY_RAG") or os.getenv("OPENAI_API_KEY")
         
-        # Validar que temos uma chave válida
+        # Validar se a chave da variável de ambiente é inválida
         VALORES_INVALIDOS = ["placeholder", "none", "", "null", "your_key_here", "sua_chave_aqui"]
+        api_key_invalida = not api_key or str(api_key).strip().lower() in VALORES_INVALIDOS
+        
+        # Se a chave da variável de ambiente for inválida E database fornecido, buscar do banco
+        if api_key_invalida and self.database:
+            print(f"[RAG] Chave da variável de ambiente inválida ou não encontrada, buscando do banco de dados...")
+            try:
+                result = self.database.supabase.table("llm_providers").select("*").eq("provider", "openai").execute()
+                if result.data and len(result.data) > 0:
+                    provider_data = result.data[0]
+                    db_api_key = provider_data.get("api_key_encrypted")
+                    if db_api_key and str(db_api_key).strip().lower() not in VALORES_INVALIDOS:
+                        api_key = db_api_key
+                        status = provider_data.get("status", "disconnected")
+                        print(f"[RAG] ✅ Chave recuperada do banco de dados (status: {status}) para embeddings (agente: {self.agent_id})")
+                    else:
+                        print(f"[RAG] ⚠️ Chave encontrada no banco mas é inválida ou placeholder")
+                else:
+                    print(f"[RAG] ⚠️ Nenhum registro encontrado na tabela llm_providers para provider='openai'")
+            except Exception as e:
+                print(f"[RAG] ⚠️ Erro ao buscar API key do banco de dados: {str(e)}")
+                import traceback
+                traceback.print_exc()
+        
+        # Validar que temos uma chave válida
         if not api_key or str(api_key).strip().lower() in VALORES_INVALIDOS:
             raise ValueError(
                 "API key da OpenAI não encontrada para embeddings do RAG. "
                 "Configure a variável de ambiente OPENAI_API_KEY_RAG ou OPENAI_API_KEY "
-                "no Cloud Run ou no arquivo .env"
+                "no Cloud Run ou no arquivo .env, ou configure no Admin -> LLMs no banco de dados."
             )
         
         api_key = str(api_key).strip()
         if len(api_key) < 20:
             raise ValueError(
                 f"API key da OpenAI inválida para embeddings (muito curta: {len(api_key)} caracteres). "
-                "Configure uma chave válida no Cloud Run ou no arquivo .env"
+                "Configure uma chave válida no Cloud Run, no arquivo .env ou no Admin -> LLMs."
             )
         
-        print(f"[RAG] Usando chave da variável de ambiente para embeddings (agente: {self.agent_id})")
+        # Log indicando a origem da chave (só se não foi logado antes)
+        if not api_key_invalida or not self.database:
+            print(f"[RAG] Usando chave da variável de ambiente para embeddings (agente: {self.agent_id})")
         
         # CRÍTICO: Setar env var com chave ANTES de criar embeddings
         os.environ["OPENAI_API_KEY"] = api_key
