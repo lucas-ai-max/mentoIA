@@ -2,11 +2,21 @@
 Módulo com definições dos agentes bilionários de tech
 """
 import os
+import sys
 
-# ⚠️ CRÍTICO: Desabilitar fallback do LiteLLM ANTES de importar CrewAI
-# Isso evita erros quando LLM não está disponível
-os.environ.setdefault("CREWAI_DISABLE_LITELLM_FALLBACK", "true")
+# ⚠️ CRÍTICO: Setar env vars ANTES de qualquer import
+# Usar assignment direto em vez de setdefault para garantir
+os.environ["CREWAI_DISABLE_LITELLM_FALLBACK"] = "true"
+os.environ["CREWAI_TELEMETRY_OPT_OUT"] = "true"
+os.environ["OTEL_SDK_DISABLED"] = "true"
 
+# Forçar flush
+sys.stdout.flush()
+
+print("[AGENTS] Env vars configuradas ANTES dos imports", flush=True)
+print(f"[AGENTS] CREWAI_DISABLE_LITELLM_FALLBACK={os.getenv('CREWAI_DISABLE_LITELLM_FALLBACK')}", flush=True)
+
+# AGORA importar CrewAI
 from crewai import Agent
 from langchain_openai import ChatOpenAI
 from pathlib import Path
@@ -372,16 +382,30 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
             api_key=api_key
         )
     
-    # Validar que LLM foi criado com sucesso
+    # VALIDAÇÃO CRÍTICA DO LLM
     if llm is None:
         agent_name = agent_data.get('name', 'Desconhecido')
         raise ValueError(
-            f"Falha ao criar LLM para o agente '{agent_name}'. "
+            f"ERRO: LLM é None para agente {agent_name}. "
             f"Provider: {llm_provider}, Model: {agent_data.get('llm_model')}. "
             f"Verifique se a API key está configurada corretamente."
         )
     
-    print(f"[AGENTS] LLM criado com sucesso: {type(llm).__name__}")
+    print(f"[AGENTS] LLM criado: {type(llm).__name__}", flush=True)
+    print(f"[AGENTS] LLM model: {getattr(llm, 'model_name', getattr(llm, 'model', 'N/A'))}", flush=True)
+    print(f"[AGENTS] ENV CREWAI_DISABLE_LITELLM_FALLBACK: {os.getenv('CREWAI_DISABLE_LITELLM_FALLBACK')}", flush=True)
+    
+    # TESTAR LLM ANTES DE PASSAR PARA AGENT
+    try:
+        print(f"[AGENTS] Testando LLM...", flush=True)
+        # Teste simples: invocar com uma mensagem mínima
+        test_result = llm.invoke("test")
+        print(f"[AGENTS] ✅ LLM respondeu ao teste", flush=True)
+    except Exception as test_error:
+        print(f"[AGENTS] ❌ ERRO: LLM falhou no teste: {test_error}", flush=True)
+        import traceback
+        traceback.print_exc()
+        raise ValueError(f"LLM inválido para agente {agent_name}: {test_error}")
     
     # Tratar verbose - pode vir como string do banco
     verbose = agent_data.get("verbose", True)
@@ -419,10 +443,25 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
         "backstory": backstory,
         "verbose": verbose,
         "allow_delegation": allow_delegation,
-        "llm": llm  # Sempre passar - já validamos
+        "llm": llm  # Sempre passar - já validamos e testamos
     }
     
-    agent = Agent(**agent_params)
+    print(f"[AGENTS] Criando Agent com LLM validado...", flush=True)
+    print(f"[AGENTS] agent_params keys: {list(agent_params.keys())}", flush=True)
+    print(f"[AGENTS] LLM type: {type(agent_params.get('llm'))}", flush=True)
+    
+    # AGORA criar Agent com LLM validado
+    try:
+        agent = Agent(**agent_params)
+        print(f"[AGENTS] ✅ Agent criado com sucesso", flush=True)
+    except Exception as agent_error:
+        print(f"[AGENTS] ❌ ERRO ao criar Agent: {agent_error}", flush=True)
+        print(f"[AGENTS] agent_params keys: {list(agent_params.keys())}", flush=True)
+        print(f"[AGENTS] LLM type: {type(agent_params.get('llm'))}", flush=True)
+        print(f"[AGENTS] LLM object: {agent_params.get('llm')}", flush=True)
+        import traceback
+        traceback.print_exc()
+        raise
     
     # Não podemos adicionar atributos ao Agent (é um modelo Pydantic)
     # O RAG manager será gerenciado externamente via dicionário
