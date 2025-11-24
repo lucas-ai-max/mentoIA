@@ -19,8 +19,8 @@ langchain-openai
 openai
 langchain-anthropic
 anthropic
-langchain-google-genai
-google-generativeai
+langchain-google-genai==1.0.3  # Versão mais compatível com CrewAI 1.4.1
+google-generativeai==0.5.4
 
 # --- LangChain Core (Necessário para funcionar) ---
 langchain
@@ -34,5 +34,5 @@ opentelemetry-api>=1.30.0
 opentelemetry-sdk>=1.30.0
 opentelemetry-exporter-otlp-proto-http>=1.30.0
 
-# --- LiteLLM (Workaround - caso CrewAI precise como fallback) ---
-# litellm>=1.0.0  # Descomente apenas se o erro persistir mesmo com CREWAI_DISABLE_LITELLM_FALLBACK=true
+# --- LiteLLM para fallback do CrewAI ---
+litellm>=1.0.0

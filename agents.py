@@ -347,32 +347,97 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
             api_key=api_key
         )
     elif llm_provider == "google":
-        # Google Gemini - suporte básico (precisa de biblioteca adicional)
+        # Estratégia: Tentar múltiplas abordagens em ordem de preferência
+        # O CrewAI pode não reconhecer ChatGoogleGenerativeAI, então tentamos várias opções
+        llm = None
+        last_error = None
+        
+        # TENTATIVA 1: Usar CrewAI.LLM nativo (melhor compatibilidade)
         try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            # Tentar com google_api_key primeiro (versão antiga), depois api_key (versão nova)
-            try:
-                llm = ChatGoogleGenerativeAI(
-                    model=agent_data.get("llm_model", "gemini-2.5-flash"),
-                    temperature=float(agent_data.get("temperature", 0.7)),
-                    max_output_tokens=max_tokens,  # Google usa max_output_tokens
-                    google_api_key=api_key
-                )
-            except TypeError:
-                # Se google_api_key não funcionar, tentar api_key (versão 2.x)
-                llm = ChatGoogleGenerativeAI(
-                    model=agent_data.get("llm_model", "gemini-2.5-flash"),
-                    temperature=float(agent_data.get("temperature", 0.7)),
-                    max_output_tokens=max_tokens,
-                    api_key=api_key
-                )
-        except ImportError:
-            raise ValueError(
-                "Google Gemini requer 'langchain-google-genai'. "
-                "Instale com: pip install langchain-google-genai"
+            print(f"[AGENTS] Tentativa 1: Criar Google via CrewAI.LLM...", flush=True)
+            from crewai import LLM
+            
+            model_name = agent_data.get("llm_model", "gemini-2.5-flash")
+            # Formato esperado pelo CrewAI: "gemini/modelo"
+            if not model_name.startswith("gemini/"):
+                model_name = f"gemini/{model_name}"
+            
+            llm = LLM(
+                model=model_name,
+                temperature=float(agent_data.get("temperature", 0.7)),
+                max_tokens=max_tokens,
+                api_key=api_key
             )
-        except Exception as e:
-            raise ValueError(f"Erro ao configurar Google Gemini: {str(e)}")
+            print(f"[AGENTS] ✅ Google LLM criado via CrewAI.LLM", flush=True)
+        except Exception as e1:
+            print(f"[AGENTS] ❌ Tentativa 1 falhou: {e1}", flush=True)
+            last_error = e1
+            
+            # TENTATIVA 2: Usar ChatGoogleGenerativeAI direto
+            try:
+                print(f"[AGENTS] Tentativa 2: Criar via ChatGoogleGenerativeAI...", flush=True)
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                
+                # Tentar com google_api_key primeiro (versão antiga), depois api_key (versão nova)
+                try:
+                    llm = ChatGoogleGenerativeAI(
+                        model=agent_data.get("llm_model", "gemini-2.5-flash"),
+                        temperature=float(agent_data.get("temperature", 0.7)),
+                        max_output_tokens=max_tokens,  # Google usa max_output_tokens
+                        google_api_key=api_key
+                    )
+                except TypeError:
+                    # Se google_api_key não funcionar, tentar api_key (versão 2.x)
+                    llm = ChatGoogleGenerativeAI(
+                        model=agent_data.get("llm_model", "gemini-2.5-flash"),
+                        temperature=float(agent_data.get("temperature", 0.7)),
+                        max_output_tokens=max_tokens,
+                        api_key=api_key
+                    )
+                print(f"[AGENTS] ✅ Google LLM criado via ChatGoogleGenerativeAI", flush=True)
+            except ImportError as e2:
+                print(f"[AGENTS] ❌ Tentativa 2 falhou (ImportError): {e2}", flush=True)
+                last_error = e2
+            except Exception as e2:
+                print(f"[AGENTS] ❌ Tentativa 2 falhou: {e2}", flush=True)
+                last_error = e2
+                
+                # TENTATIVA 3: Fallback para OpenAI
+                print(f"[AGENTS] Tentativa 3: Fallback para OpenAI...", flush=True)
+                try:
+                    # Buscar OpenAI API key do banco ou env
+                    openai_key = os.getenv("OPENAI_API_KEY")
+                    if not openai_key or openai_key.lower().strip() in ["placeholder", "none", "", "null"]:
+                        # Tentar buscar do banco
+                        if database:
+                            result = database.supabase.table("llm_providers").select("*").eq("provider", "openai").execute()
+                            if result.data and len(result.data) > 0:
+                                openai_key = result.data[0].get("api_key_encrypted")
+                    
+                    if openai_key and openai_key.lower().strip() not in ["placeholder", "none", "", "null"]:
+                        # Validar a chave
+                        openai_key = validar_api_key(openai_key, "openai", agent_data.get('name', 'Desconhecido'))
+                        # Setar env var
+                        os.environ["OPENAI_API_KEY"] = openai_key
+                        
+                        llm = ChatOpenAI(
+                            model="gpt-4",
+                            temperature=float(agent_data.get("temperature", 0.7)),
+                            max_tokens=max_tokens,
+                            api_key=openai_key
+                        )
+                        print(f"[AGENTS] ⚠️ Usando OpenAI como fallback para Google Gemini", flush=True)
+                    else:
+                        raise ValueError("OpenAI API key não disponível para fallback")
+                except Exception as e3:
+                    print(f"[AGENTS] ❌ Todas as tentativas falharam", flush=True)
+                    raise ValueError(
+                        f"Não foi possível criar LLM para Google Gemini. "
+                        f"Última tentativa: {last_error}"
+                    )
+        
+        if llm is None:
+            raise ValueError("LLM não foi criado após todas as tentativas")
     else:
         # Default para OpenAI
         llm = ChatOpenAI(
