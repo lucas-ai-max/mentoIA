@@ -183,16 +183,16 @@ class DebateCrew:
         
         # Só gerar síntese se should_generate_summary for True (modo 'sintese')
         if self.should_generate_summary:
-        print("🔄 Gerando síntese final do debate com agente facilitador...")
-        sintese = self.gerar_sintese_com_agente()
-        print(f"✅ Síntese gerada: {len(sintese)} caracteres")
-        
+            print("🔄 Gerando síntese final do debate com agente facilitador...")
+            sintese = self.gerar_sintese_com_agente()
+            print(f"✅ Síntese gerada: {len(sintese)} caracteres")
+            
             # Adicionar apenas o conteúdo da síntese, sem título
-        historico.append({
-            "tipo": "sintese_conteudo",
-            "conteudo": sintese,
-            "agente": "Facilitador"
-        })
+            historico.append({
+                "tipo": "sintese_conteudo",
+                "conteudo": sintese,
+                "agente": "Facilitador"
+            })
         
         # Atualizar histórico final
         self.historico = historico
