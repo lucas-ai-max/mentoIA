@@ -471,12 +471,30 @@ async def list_llm_providers():
                 "status": "disconnected",
                 "api_key": None,
                 "models": {
-                    "gemini-2.0-flash-exp": {"name": "Gemini 2.0 Flash", "cost": "$0.000075/1k tokens", "enabled": False, "description": "Versão mais recente e rápida"},
-                    "gemini-2.0-pro-exp": {"name": "Gemini 2.0 Pro", "cost": "$0.00125/1k tokens", "enabled": False, "description": "Versão mais recente e poderosa"},
-                    "gemini-1.5-pro": {"name": "Gemini 1.5 Pro", "cost": "$0.00125/1k tokens", "enabled": False},
-                    "gemini-1.5-flash": {"name": "Gemini 1.5 Flash", "cost": "$0.000075/1k tokens", "enabled": False},
-                    "gemini-pro": {"name": "Gemini Pro", "cost": "$0.001/1k tokens", "enabled": False},
-                    "gemini-pro-vision": {"name": "Gemini Pro Vision", "cost": "$0.001/1k tokens", "enabled": False},
+                    "gemini-3-pro": {
+                        "name": "Gemini 3 Pro",
+                        "cost": "$0.00125/1k tokens",
+                        "enabled": False,
+                        "description": "O mais avançado. Ideal para tarefas complexas, raciocínio de ponta, análise multimodal e recursos de agente/codificação mais avançados."
+                    },
+                    "gemini-2.5-pro": {
+                        "name": "Gemini 2.5 Pro",
+                        "cost": "$0.00125/1k tokens",
+                        "enabled": False,
+                        "description": "Raciocínio Avançado. Excelente para problemas complexos em código, matemática, STEM, e análise de grandes documentos ou bases de dados."
+                    },
+                    "gemini-2.5-flash": {
+                        "name": "Gemini 2.5 Flash",
+                        "cost": "$0.000075/1k tokens",
+                        "enabled": False,
+                        "description": "Custo-Benefício e Velocidade. O modelo mais equilibrado. Ideal para alta frequência, baixa latência, processamento em larga escala e casos de uso de agentes."
+                    },
+                    "gemini-2.5-flash-lite": {
+                        "name": "Gemini 2.5 Flash-Lite",
+                        "cost": "$0.00005/1k tokens",
+                        "enabled": False,
+                        "description": "Mais Rápido e Econômico. Nosso modelo multimodal mais rápido e econômico, com ótimo desempenho para tarefas de alta frequência."
+                    },
                 }
             }
         }
