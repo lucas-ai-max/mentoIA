@@ -28,8 +28,7 @@ langchain-core
 langchain-community
 langchain-text-splitters
 
-# --- Correções de Dependências (Para evitar o erro do Protobuf) ---
-protobuf>=5.0
+# --- OpenTelemetry (correções de dependências) ---
 opentelemetry-api>=1.30.0
 opentelemetry-sdk>=1.30.0
 opentelemetry-exporter-otlp-proto-http>=1.30.0
