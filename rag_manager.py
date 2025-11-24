@@ -23,10 +23,39 @@ class RAGManager:
     def __init__(self, agent_id: str, database=None):
         self.agent_id = agent_id
         self.database = database
+        
+        # Buscar chave da OpenAI para RAG (embeddings)
+        # Prioridade: 1) OPENAI_API_KEY_RAG (específica para RAG), 2) OPENAI_API_KEY (geral)
+        api_key = os.getenv("OPENAI_API_KEY_RAG") or os.getenv("OPENAI_API_KEY")
+        
+        # Validar que temos uma chave válida
+        VALORES_INVALIDOS = ["placeholder", "none", "", "null", "your_key_here", "sua_chave_aqui"]
+        if not api_key or str(api_key).strip().lower() in VALORES_INVALIDOS:
+            raise ValueError(
+                "API key da OpenAI não encontrada para embeddings do RAG. "
+                "Configure a variável de ambiente OPENAI_API_KEY_RAG ou OPENAI_API_KEY "
+                "no Cloud Run ou no arquivo .env"
+            )
+        
+        api_key = str(api_key).strip()
+        if len(api_key) < 20:
+            raise ValueError(
+                f"API key da OpenAI inválida para embeddings (muito curta: {len(api_key)} caracteres). "
+                "Configure uma chave válida no Cloud Run ou no arquivo .env"
+            )
+        
+        print(f"[RAG] Usando chave da variável de ambiente para embeddings (agente: {self.agent_id})")
+        
+        # CRÍTICO: Setar env var com chave ANTES de criar embeddings
+        os.environ["OPENAI_API_KEY"] = api_key
+        
+        # Criar embeddings com a chave
         self.embeddings = OpenAIEmbeddings(
             model="text-embedding-3-small",
-            api_key=os.getenv("OPENAI_API_KEY")
+            api_key=api_key
         )
+        print(f"[RAG] Embeddings inicializados com sucesso")
+        
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=200,
