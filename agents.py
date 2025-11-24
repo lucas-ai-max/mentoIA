@@ -1,9 +1,14 @@
 """
 Módulo com definições dos agentes bilionários de tech
 """
+import os
+
+# ⚠️ CRÍTICO: Desabilitar fallback do LiteLLM ANTES de importar CrewAI
+# Isso evita erros quando LLM não está disponível
+os.environ.setdefault("CREWAI_DISABLE_LITELLM_FALLBACK", "true")
+
 from crewai import Agent
 from langchain_openai import ChatOpenAI
-import os
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -53,9 +58,12 @@ def criar_elon_musk():
     if agent_llm is not None:
         agent_params["llm"] = agent_llm
     else:
-        # Se não há LLM disponível, logar warning mas continuar
-        print(f"[AGENTS] AVISO: Criando {agent_params['role']} sem LLM específico")
-        # CrewAI tentará criar LLM automaticamente (pode falhar)
+        # Se não há LLM disponível, lançar erro em vez de criar sem LLM
+        # Isso evita que o CrewAI tente usar LiteLLM como fallback
+        raise ValueError(
+            f"Não é possível criar {agent_params['role']} sem LLM. "
+            f"Configure uma API key no Admin -> LLMs ou no arquivo .env"
+        )
     
     return Agent(**agent_params)
 
@@ -75,9 +83,12 @@ def criar_bill_gates():
     if llm is not None:
         agent_params["llm"] = llm
     else:
-        # Se não há LLM disponível, logar warning mas continuar
-        print(f"[AGENTS] AVISO: Criando {agent_params['role']} sem LLM específico")
-        # CrewAI tentará criar LLM automaticamente (pode falhar)
+        # Se não há LLM disponível, lançar erro em vez de criar sem LLM
+        # Isso evita que o CrewAI tente usar LiteLLM como fallback
+        raise ValueError(
+            f"Não é possível criar {agent_params['role']} sem LLM. "
+            f"Configure uma API key no Admin -> LLMs ou no arquivo .env"
+        )
     
     return Agent(**agent_params)
 
@@ -98,9 +109,12 @@ def criar_jeff_bezos():
     if llm is not None:
         agent_params["llm"] = llm
     else:
-        # Se não há LLM disponível, logar warning mas continuar
-        print(f"[AGENTS] AVISO: Criando {agent_params['role']} sem LLM específico")
-        # CrewAI tentará criar LLM automaticamente (pode falhar)
+        # Se não há LLM disponível, lançar erro em vez de criar sem LLM
+        # Isso evita que o CrewAI tente usar LiteLLM como fallback
+        raise ValueError(
+            f"Não é possível criar {agent_params['role']} sem LLM. "
+            f"Configure uma API key no Admin -> LLMs ou no arquivo .env"
+        )
     
     return Agent(**agent_params)
 
@@ -121,9 +135,12 @@ def criar_mark_zuckerberg():
     if llm is not None:
         agent_params["llm"] = llm
     else:
-        # Se não há LLM disponível, logar warning mas continuar
-        print(f"[AGENTS] AVISO: Criando {agent_params['role']} sem LLM específico")
-        # CrewAI tentará criar LLM automaticamente (pode falhar)
+        # Se não há LLM disponível, lançar erro em vez de criar sem LLM
+        # Isso evita que o CrewAI tente usar LiteLLM como fallback
+        raise ValueError(
+            f"Não é possível criar {agent_params['role']} sem LLM. "
+            f"Configure uma API key no Admin -> LLMs ou no arquivo .env"
+        )
     
     return Agent(**agent_params)
 
@@ -167,9 +184,12 @@ def criar_facilitador():
     if llm is not None:
         agent_params["llm"] = llm
     else:
-        # Se não há LLM disponível, logar warning mas continuar
-        print(f"[AGENTS] AVISO: Criando {agent_params['role']} sem LLM específico")
-        # CrewAI tentará criar LLM automaticamente (pode falhar)
+        # Se não há LLM disponível, lançar erro em vez de criar sem LLM
+        # Isso evita que o CrewAI tente usar LiteLLM como fallback
+        raise ValueError(
+            f"Não é possível criar {agent_params['role']} sem LLM. "
+            f"Configure uma API key no Admin -> LLMs ou no arquivo .env"
+        )
     
     return Agent(**agent_params)
 

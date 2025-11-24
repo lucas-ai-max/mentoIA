@@ -9,6 +9,8 @@ import os
 # Isso evita que o CrewAI tente fazer prompts interativos
 os.environ.setdefault("CREWAI_TELEMETRY_OPT_OUT", "true")
 os.environ.setdefault("OTEL_SDK_DISABLED", "true")
+# Desabilitar fallback do LiteLLM para evitar erros quando LLM não está disponível
+os.environ.setdefault("CREWAI_DISABLE_LITELLM_FALLBACK", "true")
 
 # Adicionar logs de inicialização imediatamente
 print("[API_SERVER] Variáveis de ambiente configuradas", flush=True)
