@@ -461,16 +461,22 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
     print(f"[AGENTS] ENV CREWAI_DISABLE_LITELLM_FALLBACK: {os.getenv('CREWAI_DISABLE_LITELLM_FALLBACK')}", flush=True)
     
     # TESTAR LLM ANTES DE PASSAR PARA AGENT
-    try:
-        print(f"[AGENTS] Testando LLM...", flush=True)
-        # Teste simples: invocar com uma mensagem mínima
-        test_result = llm.invoke("test")
-        print(f"[AGENTS] ✅ LLM respondeu ao teste", flush=True)
-    except Exception as test_error:
-        print(f"[AGENTS] ❌ ERRO: LLM falhou no teste: {test_error}", flush=True)
-        import traceback
-        traceback.print_exc()
-        raise ValueError(f"LLM inválido para agente {agent_name}: {test_error}")
+    # Verificar se o LLM tem o método invoke (Runnable do LangChain)
+    if hasattr(llm, "invoke"):
+        try:
+            print(f"[AGENTS] Testando LLM (Runnable)...", flush=True)
+            # Teste simples: invocar com uma mensagem mínima
+            test_result = llm.invoke("test")
+            print(f"[AGENTS] ✅ LLM respondeu ao teste", flush=True)
+        except Exception as test_error:
+            print(f"[AGENTS] ❌ ERRO: LLM falhou no teste: {test_error}", flush=True)
+            import traceback
+            traceback.print_exc()
+            raise ValueError(f"LLM inválido para agente {agent_name}: {test_error}")
+    else:
+        # LLM nativo/alternativo (ex: GeminiCompletion do CrewAI) - não precisa de teste de invoke
+        print(f"[AGENTS] ⚠️ LLM nativo/alternativo detectado (sem método invoke) - pulando teste de invocação", flush=True)
+        print(f"[AGENTS] ✅ LLM considerado válido (tipo: {type(llm).__name__})", flush=True)
     
     # Tratar verbose - pode vir como string do banco
     verbose = agent_data.get("verbose", True)
