@@ -14,24 +14,19 @@ psycopg2-binary
 pypdf
 python-docx
 
-# --- LLM Providers (Sem versões fixas antigas!) ---
+# --- LLM Providers ---
 langchain-openai
 openai
 langchain-anthropic
 anthropic
-langchain-google-genai==1.0.3  # Versão mais compatível com CrewAI 1.4.1
-google-generativeai==0.5.4
+langchain-google-genai
+google-generativeai
 
-# --- LangChain Core (Necessário para funcionar) ---
+# --- LangChain Core ---
 langchain
 langchain-core
 langchain-community
 langchain-text-splitters
-
-# --- OpenTelemetry (correções de dependências) ---
-opentelemetry-api>=1.30.0
-opentelemetry-sdk>=1.30.0
-opentelemetry-exporter-otlp-proto-http>=1.30.0
 
 # --- LiteLLM para fallback do CrewAI ---
 litellm>=1.0.0
