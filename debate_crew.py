@@ -96,7 +96,7 @@ class DebateCrew:
         })
         
         # Cada agente responde uma vez
-            for idx, agente in enumerate(self.agentes):
+        for idx, agente in enumerate(self.agentes):
                 try:
                     # Contexto: o que outros agentes já disseram
                     contexto_anterior = self._obter_contexto_anterior(historico)
