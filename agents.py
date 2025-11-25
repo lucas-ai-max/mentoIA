@@ -34,11 +34,11 @@ if api_key and api_key.lower().strip() in ["placeholder", "none", "", "null"]:
     api_key = None
     llm = None  # Será criado dinamicamente quando necessário
 elif api_key:
-llm = ChatOpenAI(
-    model="gpt-4",
-    temperature=0.7,
-    api_key=api_key
-)
+    llm = ChatOpenAI(
+        model="gpt-4",
+        temperature=0.7,
+        api_key=api_key
+    )
 else:
     llm = None  # Será criado dinamicamente quando necessário
 
