@@ -389,16 +389,16 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
             # TENTATIVA 2: Usar ChatGoogleGenerativeAI direto
             try:
                 print(f"[AGENTS] Tentativa 2: Criar via ChatGoogleGenerativeAI...", flush=True)
-            from langchain_google_genai import ChatGoogleGenerativeAI
+                from langchain_google_genai import ChatGoogleGenerativeAI
                 
                 # Tentar com google_api_key primeiro (versão antiga), depois api_key (versão nova)
                 try:
-            llm = ChatGoogleGenerativeAI(
+                    llm = ChatGoogleGenerativeAI(
                         model=agent_data.get("llm_model", "gemini-2.5-flash"),
-                temperature=float(agent_data.get("temperature", 0.7)),
-                max_output_tokens=max_tokens,  # Google usa max_output_tokens
-                google_api_key=api_key
-            )
+                        temperature=float(agent_data.get("temperature", 0.7)),
+                        max_output_tokens=max_tokens,  # Google usa max_output_tokens
+                        google_api_key=api_key
+                    )
                 except TypeError:
                     # Se google_api_key não funcionar, tentar api_key (versão 2.x)
                     llm = ChatGoogleGenerativeAI(
