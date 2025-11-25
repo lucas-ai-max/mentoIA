@@ -34,11 +34,11 @@ if api_key and api_key.lower().strip() in ["placeholder", "none", "", "null"]:
     api_key = None
     llm = None  # Será criado dinamicamente quando necessário
 elif api_key:
-    llm = ChatOpenAI(
-        model="gpt-4",
-        temperature=0.7,
-        api_key=api_key
-    )
+llm = ChatOpenAI(
+    model="gpt-4",
+    temperature=0.7,
+    api_key=api_key
+)
 else:
     llm = None  # Será criado dinamicamente quando necessário
 
@@ -190,16 +190,29 @@ def criar_facilitador():
         "verbose": True,
         "allow_delegation": False
     }
-    # Adicionar LLM se disponível
-    if llm is not None:
-        agent_params["llm"] = llm
-    else:
-        # Se não há LLM disponível, lançar erro em vez de criar sem LLM
-        # Isso evita que o CrewAI tente usar LiteLLM como fallback
+    
+    # Buscar API key para facilitador (prioridade: variável de ambiente específica, depois OPENAI_API_KEY)
+    facilitador_api_key = os.getenv("OPENAI_API_KEY_FACILITADOR") or os.getenv("OPENAI_API_KEY")
+    
+    # Validar que temos uma chave válida
+    VALORES_INVALIDOS = ["placeholder", "none", "", "null", "your_key_here", "sua_chave_aqui"]
+    if not facilitador_api_key or str(facilitador_api_key).strip().lower() in VALORES_INVALIDOS:
+        # Se não houver chave válida, lançar erro
         raise ValueError(
             f"Não é possível criar {agent_params['role']} sem LLM. "
-            f"Configure uma API key no Admin -> LLMs ou no arquivo .env"
+            f"Configure OPENAI_API_KEY_FACILITADOR ou OPENAI_API_KEY no arquivo .env ou no Cloud Run"
         )
+    
+    # Criar LLM para facilitador com gpt-4.1
+    from langchain_openai import ChatOpenAI
+    facilitador_llm = ChatOpenAI(
+        model="gpt-4.1",
+        temperature=0.7,
+        api_key=facilitador_api_key
+    )
+    
+    agent_params["llm"] = facilitador_llm
+    print("[AGENTS] ✅ Facilitador criado com LLM (gpt-4.1)", flush=True)
     
     return Agent(**agent_params)
 
@@ -376,16 +389,16 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
             # TENTATIVA 2: Usar ChatGoogleGenerativeAI direto
             try:
                 print(f"[AGENTS] Tentativa 2: Criar via ChatGoogleGenerativeAI...", flush=True)
-                from langchain_google_genai import ChatGoogleGenerativeAI
+            from langchain_google_genai import ChatGoogleGenerativeAI
                 
                 # Tentar com google_api_key primeiro (versão antiga), depois api_key (versão nova)
                 try:
-                    llm = ChatGoogleGenerativeAI(
+            llm = ChatGoogleGenerativeAI(
                         model=agent_data.get("llm_model", "gemini-2.5-flash"),
-                        temperature=float(agent_data.get("temperature", 0.7)),
-                        max_output_tokens=max_tokens,  # Google usa max_output_tokens
-                        google_api_key=api_key
-                    )
+                temperature=float(agent_data.get("temperature", 0.7)),
+                max_output_tokens=max_tokens,  # Google usa max_output_tokens
+                google_api_key=api_key
+            )
                 except TypeError:
                     # Se google_api_key não funcionar, tentar api_key (versão 2.x)
                     llm = ChatGoogleGenerativeAI(
@@ -431,10 +444,10 @@ def criar_agente_dinamico(agent_data: dict, use_rag: bool = True, database=None)
                         raise ValueError("OpenAI API key não disponível para fallback")
                 except Exception as e3:
                     print(f"[AGENTS] ❌ Todas as tentativas falharam", flush=True)
-                    raise ValueError(
+            raise ValueError(
                         f"Não foi possível criar LLM para Google Gemini. "
                         f"Última tentativa: {last_error}"
-                    )
+            )
         
         if llm is None:
             raise ValueError("LLM não foi criado após todas as tentativas")
