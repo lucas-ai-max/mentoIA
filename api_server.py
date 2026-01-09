@@ -450,18 +450,18 @@ async def start_debate(request: DebateRequest):
         # Salvar debate no banco de dados
         debate_id = None
         if request.salvar:
-        try:
+            try:
                 if not db:
                     raise HTTPException(status_code=503, detail="Database não disponível. Não foi possível salvar o debate.")
-            debate_id = db.save_debate(
-                pergunta=request.pergunta,
-                selected_agents=request.agentes,
-                num_rodadas=request.num_rodadas,
-                historico=historico,
-                sintese=sintese_final
-            )
-            print(f"[DEBATE] Debate salvo no banco com ID: {debate_id}")
-        except Exception as db_error:
+                debate_id = db.save_debate(
+                    pergunta=request.pergunta,
+                    selected_agents=request.agentes,
+                    num_rodadas=request.num_rodadas,
+                    historico=historico,
+                    sintese=sintese_final
+                )
+                print(f"[DEBATE] Debate salvo no banco com ID: {debate_id}")
+            except Exception as db_error:
             print(f"[DEBATE] ERRO CRITICO ao salvar no banco: {str(db_error)}")
             print(f"[DEBATE] Tipo do erro: {type(db_error).__name__}")
             import traceback
