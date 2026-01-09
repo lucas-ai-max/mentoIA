@@ -207,6 +207,56 @@ print("[API_SERVER] Módulo api_server carregado com sucesso!", flush=True)
 print("[API_SERVER] App FastAPI pronto para iniciar", flush=True)
 print("[API_SERVER] ==========================================", flush=True)
 
+@app.get("/api/debug/runtime")
+async def debug_runtime():
+    """Endpoint de debug para verificar estado do servidor"""
+    import traceback
+    debug_info = {
+        "app_routes_count": len(app.routes),
+        "admin_routes": [],
+        "import_status": "unknown",
+        "database_status": "unknown",
+        "errors": []
+    }
+    
+    # Verificar rotas admin
+    for route in app.routes:
+        if hasattr(route, 'path') and '/api/admin' in route.path:
+            methods = list(route.methods) if hasattr(route, 'methods') and route.methods else []
+            debug_info["admin_routes"].append({
+                "path": route.path,
+                "methods": methods
+            })
+    
+    # Verificar importação de api_admin
+    try:
+        from api_admin import router
+        debug_info["import_status"] = "success"
+        debug_info["admin_router_routes_count"] = len(router.routes)
+    except Exception as e:
+        debug_info["import_status"] = f"failed: {str(e)}"
+        debug_info["errors"].append({
+            "type": "import_error",
+            "error": str(e),
+            "traceback": traceback.format_exc()[:500]
+        })
+    
+    # Verificar database
+    try:
+        db_test = get_database()
+        if db_test:
+            debug_info["database_status"] = "connected"
+        else:
+            debug_info["database_status"] = "not_initialized"
+    except Exception as e:
+        debug_info["database_status"] = f"error: {str(e)}"
+        debug_info["errors"].append({
+            "type": "database_error",
+            "error": str(e)
+        })
+    
+    return debug_info
+
 class DebateRequest(BaseModel):
     agentes: List[str]
     pergunta: str
