@@ -642,10 +642,12 @@ async def move_debate_to_folder(request: MoveDebateRequest):
         raise HTTPException(status_code=500, detail=f"Erro ao mover debate: {str(e)}")
 
 if __name__ == "__main__":
+    # Usar porta do ambiente (Cloud Run usa PORT, padrão 8080)
+    port = int(os.getenv("PORT", "8000"))
     uvicorn.run(
         app, 
         host="0.0.0.0", 
-        port=8000,
+        port=port,
         timeout_keep_alive=600,  # 10 minutos para manter conexão durante uploads grandes
         limit_concurrency=100,
         limit_max_requests=1000
