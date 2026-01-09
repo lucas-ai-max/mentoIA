@@ -30,40 +30,13 @@ except Exception as e:
     traceback.print_exc()
     sys.exit(1)
 
-try:
-from agents import AGENTES_DISPONIVEIS
-    print("[API_SERVER] Agents importado com sucesso", flush=True)
-except Exception as e:
-    print(f"[API_SERVER] ERRO ao importar agents: {str(e)}", flush=True)
-    import traceback
-    traceback.print_exc()
-    # Continuar mesmo se agents falhar (pode usar fallback)
-    AGENTES_DISPONIVEIS = {}
+# LAZY IMPORTS - Não importar CrewAI no nível do módulo para acelerar startup
+# Essas importações pesadas serão feitas apenas quando necessário (dentro das funções)
+AGENTES_DISPONIVEIS = {}
+DebateCrew = None
+Database = None
 
-try:
-    print("[API_SERVER] Tentando importar debate_crew...", flush=True)
-from debate_crew import DebateCrew
-    print(f"[API_SERVER] DebateCrew importado com sucesso: {DebateCrew}", flush=True)
-    print(f"[API_SERVER] Tipo de DebateCrew: {type(DebateCrew)}", flush=True)
-except Exception as e:
-    print(f"[API_SERVER] =====================================", flush=True)
-    print(f"[API_SERVER] ERRO CRÍTICO ao importar debate_crew!", flush=True)
-    print(f"[API_SERVER] Tipo do erro: {type(e).__name__}", flush=True)
-    print(f"[API_SERVER] Mensagem: {str(e)}", flush=True)
-    print(f"[API_SERVER] =====================================", flush=True)
-    import traceback
-    traceback.print_exc()
-    print(f"[API_SERVER] DebateCrew será None - debates não funcionarão", flush=True)
-    DebateCrew = None
-
-try:
-from database import Database
-    print("[API_SERVER] Database importado com sucesso", flush=True)
-except Exception as e:
-    print(f"[API_SERVER] ERRO ao importar database: {str(e)}", flush=True)
-    import traceback
-    traceback.print_exc()
-    Database = None
+print("[API_SERVER] Importações pesadas (CrewAI) serão feitas lazy (quando necessário)", flush=True)
 
 import uvicorn
 print("[API_SERVER] Uvicorn importado com sucesso", flush=True)
@@ -87,41 +60,39 @@ print("[API_SERVER] FastAPI app criado com sucesso", flush=True)
 print(f"[API_SERVER] admin_router apos importacao: {admin_router}", flush=True)
 print(f"[API_SERVER] Tipo de admin_router: {type(admin_router)}", flush=True)
 
-# Inicializar banco de dados - será feito no startup event para não bloquear o servidor
-# IMPORTANTE: Usar a mesma instância do Database que está em api_admin.py
-# para garantir consistência
+# Inicializar banco de dados - LAZY LOADING para acelerar startup
 db = None
+
+def get_database():
+    """Lazy initialization do Database - só carrega quando necessário"""
+    global db, Database
+    if db is not None:
+        return db
+    
+    try:
+        if Database is None:
+            print("[API_SERVER] Importando Database (lazy)...", flush=True)
+            from database import Database as DatabaseClass
+            Database = DatabaseClass
+        
+        print("[API_SERVER] Inicializando Database (lazy)...", flush=True)
+        db = Database()
+        print("[API_SERVER] Database inicializado com sucesso", flush=True)
+        return db
+    except Exception as e:
+        print(f"[API_SERVER] ERRO ao inicializar Database: {str(e)}", flush=True)
+        return None
 
 # Evento de startup - inicializar Database após o servidor iniciar
 @app.on_event("startup")
 async def startup_event():
-    """Inicializa o Database após o servidor iniciar"""
-    global db
-    print("[API_SERVER] Startup event: Inicializando Database...", flush=True)
-    try:
-db = Database()
-        print(f"[API_SERVER] Database inicializado: {db}", flush=True)
-
-        # Testar conexão (não bloquear se falhar)
-try:
-            print("[API_SERVER] Testando conexão com banco...", flush=True)
-    if db.test_connection():
-                print("[API_SERVER] Conexao com Supabase OK", flush=True)
-        if db.check_tables_exist():
-                    print("[API_SERVER] Tabelas verificadas", flush=True)
-        else:
-                    print("[API_SERVER] AVISO: Tabelas podem nao existir. Execute supabase_schema.sql no Supabase", flush=True)
-    else:
-                print("[API_SERVER] Aviso: Problemas na conexao com o banco de dados", flush=True)
-        except Exception as e:
-            print(f"[API_SERVER] Erro ao testar conexao: {str(e)}", flush=True)
-            import traceback
-            traceback.print_exc()
-except Exception as e:
-        print(f"[API_SERVER] ERRO ao inicializar Database: {str(e)}", flush=True)
-    import traceback
-    traceback.print_exc()
-        print("[API_SERVER] AVISO: Continuando sem Database. Algumas funcionalidades podem não funcionar.", flush=True)
+    """Inicializa o Database após o servidor iniciar - LAZY"""
+    global db, Database
+    print("[API_SERVER] Startup event: Servidor pronto!", flush=True)
+    print("[API_SERVER] Database será inicializado na primeira requisição (lazy)", flush=True)
+    
+    # Não inicializar Database aqui para acelerar startup
+    # Será inicializado na primeira requisição que precisar dele
 
 # CORS para permitir requisições do frontend
 # Obter origens permitidas das variáveis de ambiente
@@ -171,11 +142,12 @@ class DebateRequest(BaseModel):
 async def get_agents():
     """Retorna lista de agentes disponíveis do banco de dados"""
     try:
-        if not db:
-            # Fallback para agentes hardcoded se database não estiver disponível
-            return {"agentes": list(AGENTES_DISPONIVEIS.keys())}
+        database = get_database()
+        if not database:
+            # Fallback para lista vazia se database não estiver disponível
+            return {"agentes": []}
         # Buscar agentes do banco de dados
-        result = db.supabase.table("agents").select("*").execute()
+        result = database.supabase.table("agents").select("*").execute()
         
         if result.data and len(result.data) > 0:
             agents = []

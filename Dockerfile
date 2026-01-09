@@ -30,5 +30,6 @@ ENV OTEL_SDK_DISABLED=true
 # Expor porta
 EXPOSE 8080
 
-# Comando usando o wrapper seguro
-CMD ["python", "start_server.py"]
+# Usar uvicorn diretamente para startup mais rápido
+# O uvicorn carrega o app de forma lazy, só quando necessário
+CMD ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--timeout-keep-alive", "600"]
