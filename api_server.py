@@ -51,10 +51,17 @@ print("[API_SERVER] FastAPI app criado com sucesso", flush=True)
 try:
     print("[API_SERVER] Importando api_admin...", flush=True)
     from api_admin import router as admin_router_imported
+    print(f"[API_SERVER] Router importado: prefix={admin_router_imported.prefix}", flush=True)
     app.include_router(admin_router_imported)
     print("[API_SERVER] Router de admin registrado com sucesso", flush=True)
+    # Listar rotas registradas para debug
+    routes = [route.path for route in app.routes if hasattr(route, 'path')]
+    admin_routes = [r for r in routes if '/api/admin' in r]
+    print(f"[API_SERVER] Rotas de admin registradas: {admin_routes[:5]}...", flush=True)
 except Exception as e:
-    print(f"[API_SERVER] AVISO: Erro ao importar api_admin: {str(e)}", flush=True)
+    print(f"[API_SERVER] ERRO ao importar api_admin: {str(e)}", flush=True)
+    import traceback
+    traceback.print_exc()
     print("[API_SERVER] Continuando sem rotas de admin", flush=True)
 
 # Inicializar banco de dados - LAZY LOADING para acelerar startup
