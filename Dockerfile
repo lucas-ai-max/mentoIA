@@ -33,5 +33,6 @@ EXPOSE 8080
 # Tornar o entrypoint executável
 RUN chmod +x entrypoint.sh
 
-# Usar entrypoint.sh que tem verificações robustas
-CMD ["./entrypoint.sh"]
+# TESTE: Usar servidor minimal primeiro para diagnosticar
+# Depois trocar para: CMD ["./entrypoint.sh"]
+CMD ["python", "-m", "uvicorn", "test_server:app", "--host", "0.0.0.0", "--port", "8080"]
