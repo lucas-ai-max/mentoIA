@@ -33,5 +33,5 @@ EXPOSE 8080
 # Tornar o entrypoint executável
 RUN chmod +x entrypoint.sh
 
-# Usar api_server com todas as rotas admin
-CMD ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--timeout-keep-alive", "600"]
+# Usar main.py minimalista
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--timeout-keep-alive", "600"]

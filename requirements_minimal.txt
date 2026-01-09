@@ -1,0 +1,3 @@
+# Requirements Minimalistas - Apenas o essencial
+fastapi
+uvicorn
