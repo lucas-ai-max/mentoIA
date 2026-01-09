@@ -242,6 +242,16 @@ print("[API_SERVER] Módulo api_server carregado com sucesso!", flush=True)
 print("[API_SERVER] App FastAPI pronto para iniciar", flush=True)
 print("[API_SERVER] ==========================================", flush=True)
 
+@app.get("/")
+async def root():
+    """Health check básico"""
+    return {"status": "ok", "service": "MentorIA API", "version": "1.0"}
+
+@app.get("/health")
+async def health():
+    """Health check para Cloud Run"""
+    return {"status": "healthy"}
+
 @app.get("/api/debug/runtime")
 async def debug_runtime():
     """Endpoint de debug para verificar estado do servidor"""
