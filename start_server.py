@@ -16,28 +16,40 @@ sys.stderr.flush()
 
 print("=" * 50, flush=True)
 print("Iniciando servidor FastAPI...", flush=True)
-print(f"PORT={os.getenv('PORT', '8080')}", flush=True)
+port = int(os.getenv("PORT", "8080"))
+print(f"PORT={port}", flush=True)
 print("=" * 50, flush=True)
 
 try:
-    # Importar e iniciar o servidor
+    # Importar uvicorn primeiro
     import uvicorn
-    from api_server import app
+    print("[START] uvicorn importado", flush=True)
     
-    port = int(os.getenv("PORT", "8080"))
+    # Importar app (pode demorar devido ao CrewAI)
+    print("[START] Importando api_server...", flush=True)
+    from api_server import app
+    print("[START] api_server importado com sucesso", flush=True)
+    
     host = "0.0.0.0"
     
-    print(f"Iniciando uvicorn em {host}:{port}...", flush=True)
+    print(f"[START] Iniciando uvicorn em {host}:{port}...", flush=True)
+    print(f"[START] Servidor pronto para receber requisições", flush=True)
     
+    # Usar uvicorn.run com configurações otimizadas
     uvicorn.run(
         app,
         host=host,
         port=port,
         workers=1,
-        log_level="info"
+        log_level="info",
+        access_log=True,
+        timeout_keep_alive=600
     )
+except KeyboardInterrupt:
+    print("[START] Servidor interrompido pelo usuário", flush=True)
+    sys.exit(0)
 except Exception as e:
-    print(f"ERRO CRÍTICO ao iniciar servidor: {e}", flush=True)
+    print(f"[START] ERRO CRÍTICO ao iniciar servidor: {e}", flush=True)
     import traceback
     traceback.print_exc()
     sys.exit(1)
