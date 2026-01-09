@@ -136,6 +136,13 @@ def get_database():
 @app.on_event("startup")
 async def startup_event():
     """Startup event - não fazer nada pesado aqui"""
+    # #region debug log
+    import json
+    try:
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_startup_event", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:114", "message": "Startup event executado", "data": {"app_routes_count": len(app.routes)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "E"}) + "\n")
+    except: pass
+    # #endregion
     print("[API_SERVER] Startup event: Servidor pronto!", flush=True)
     print("[API_SERVER] Rotas de admin e database serão carregados lazy", flush=True)
     

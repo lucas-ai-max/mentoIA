@@ -268,6 +268,13 @@ async def list_agents(
     status: Optional[str] = None
 ):
     """Lista todos os agentes com filtros opcionais"""
+    # #region debug log
+    import json
+    try:
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_list_agents_entry", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:264", "message": "list_agents() chamado", "data": {"search": search, "llm": llm, "status": status}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+    except: pass
+    # #endregion
     try:
         logger.info(f"Listando agentes - search={search}, llm={llm}, status={status}")
         print(f"[API_ADMIN] Listando agentes - search={search}, llm={llm}, status={status}", flush=True)
@@ -373,6 +380,13 @@ async def list_agents(
         print(f"[API_ADMIN] ERRO CRÍTICO ao listar agentes: {str(e)}", flush=True)
         traceback.print_exc()
         # Retornar lista vazia em vez de erro 500 para não quebrar o frontend
+        # #region debug log
+        import json, traceback
+        try:
+            with open('.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"id": "log_list_agents_error", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:376", "message": "list_agents() ERRO CRÍTICO", "data": {"error": str(e), "error_type": type(e).__name__, "traceback": traceback.format_exc()[:500]}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+        except: pass
+        # #endregion
         logger.warning("Retornando lista vazia devido a erro")
         return {"agents": []}
 
