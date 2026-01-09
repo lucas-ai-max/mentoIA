@@ -49,12 +49,14 @@ def get_db():
     Lazy initialization do Database.
     Retorna a instância do Database ou levanta HTTPException se não disponível.
     """
+    global _db_instance, _db_error, Database
     # #region debug log
     import json
-    with open('.cursor/debug.log', 'a') as f:
-        f.write(json.dumps({"id": "log_get_db_entry", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:47", "message": "get_db() chamado", "data": {"_db_instance_exists": _db_instance is not None, "_db_error_exists": _db_error is not None}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+    try:
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_get_db_entry", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:47", "message": "get_db() chamado", "data": {"_db_instance_exists": _db_instance is not None, "_db_error_exists": _db_error is not None}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+    except: pass
     # #endregion
-    global _db_instance, _db_error, Database
     
     if _db_instance is not None:
         # #region debug log
