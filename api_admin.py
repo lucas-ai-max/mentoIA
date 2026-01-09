@@ -237,17 +237,38 @@ async def list_agents(
         
         # Verificar se a tabela existe
         try:
+            # Primeiro, tentar uma query simples para verificar conexão
+            print(f"[API_ADMIN] Testando conexao com Supabase...")
+            test_result = db_instance.supabase.table("agents").select("id").limit(1).execute()
+            print(f"[API_ADMIN] Conexao OK. Teste retornou: {len(test_result.data) if test_result.data else 0} registros")
+            
+            # Agora fazer a query completa
             query = db_instance.supabase.table("agents").select("*")
             
             if status:
                 query = query.eq("status", status)
+                print(f"[API_ADMIN] Aplicando filtro status={status}")
             if llm:
                 query = query.eq("llm_model", llm)
+                print(f"[API_ADMIN] Aplicando filtro llm={llm}")
             
+            print(f"[API_ADMIN] Executando query completa...")
             result = query.order("created_at", desc=True).execute()
             agents = result.data if result.data else []
             
-            print(f"[API_ADMIN] {len(agents)} agentes encontrados")
+            print(f"[API_ADMIN] Query executada com sucesso. {len(agents)} agentes encontrados")
+            
+            # Log detalhado se não houver agentes
+            if len(agents) == 0:
+                print(f"[API_ADMIN] AVISO: Nenhum agente encontrado. Verificando possiveis causas...")
+                # Tentar sem filtros para ver se há algum agente
+                all_result = db_instance.supabase.table("agents").select("id, name, status").execute()
+                all_agents = all_result.data if all_result.data else []
+                print(f"[API_ADMIN] Total de agentes na tabela (sem filtros): {len(all_agents)}")
+                if all_agents:
+                    print(f"[API_ADMIN] Agentes encontrados (primeiros 3):")
+                    for agent in all_agents[:3]:
+                        print(f"  - {agent.get('name', 'N/A')} (status: {agent.get('status', 'N/A')}, id: {agent.get('id', 'N/A')})")
             
             if search:
                 search_lower = search.lower()
@@ -260,12 +281,24 @@ async def list_agents(
             
             return {"agents": agents}
         except Exception as table_error:
-            # Se a tabela não existir, retornar lista vazia
+            # Log detalhado do erro
             error_msg = str(table_error).lower()
+            print(f"[API_ADMIN] ERRO ao consultar tabela agents: {str(table_error)}")
+            import traceback
+            traceback.print_exc()
+            
+            # Se a tabela não existir, retornar lista vazia
             if "relation" in error_msg and "does not exist" in error_msg:
                 print("[API_ADMIN] AVISO: Tabela 'agents' nao existe. Retornando lista vazia.")
                 print("[API_ADMIN] DICA: Execute supabase_admin_schema.sql no Supabase para criar as tabelas")
                 return {"agents": []}
+            elif "permission denied" in error_msg or "row-level security" in error_msg:
+                print("[API_ADMIN] ERRO: RLS bloqueando acesso. Verifique as politicas RLS.")
+                print("[API_ADMIN] DICA: Execute supabase_rls_setup.sql no Supabase")
+                raise HTTPException(
+                    status_code=503,
+                    detail="Acesso negado pela politica RLS. Verifique as configuracoes de seguranca do Supabase."
+                )
             else:
                 raise
     except HTTPException:
@@ -938,13 +971,21 @@ async def debug_info():
         
         for table_name in tables_to_test:
             try:
-                # Tentar contar registros
-                result = db_instance.supabase.table(table_name).select("id", count="exact").limit(1).execute()
-                count = result.count if hasattr(result, 'count') else (len(result.data) if result.data else 0)
-                
-                # Tentar buscar alguns registros
-                sample_result = db_instance.supabase.table(table_name).select("*").limit(3).execute()
+                # Tentar buscar alguns registros primeiro
+                sample_result = db_instance.supabase.table(table_name).select("*").limit(10).execute()
                 sample_data = sample_result.data if sample_result.data else []
+                
+                # Tentar contar registros (pode não funcionar com RLS, então usamos uma query alternativa)
+                try:
+                    count_result = db_instance.supabase.table(table_name).select("id", count="exact").execute()
+                    count = count_result.count if hasattr(count_result, 'count') and count_result.count is not None else len(sample_data)
+                except:
+                    # Se count não funcionar, fazer uma query para contar manualmente
+                    try:
+                        all_result = db_instance.supabase.table(table_name).select("id").execute()
+                        count = len(all_result.data) if all_result.data else 0
+                    except:
+                        count = len(sample_data)  # Fallback para o que conseguimos buscar
                 
                 debug_info["tables"][table_name] = {
                     "exists": True,

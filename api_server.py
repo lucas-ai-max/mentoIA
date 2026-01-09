@@ -163,13 +163,19 @@ async def get_agents():
             # Fallback para lista vazia se database não estiver disponível
             return {"agentes": []}
         # Buscar agentes do banco de dados
+        print(f"[API] Buscando agentes no Supabase...")
         result = database.supabase.table("agents").select("*").execute()
+        
+        print(f"[API] Query executada. Total de registros retornados: {len(result.data) if result.data else 0}")
         
         if result.data and len(result.data) > 0:
             agents = []
+            active_count = 0
             for agent in result.data:
                 # Filtrar apenas agentes ativos
-                if agent.get("status", "active") == "active":
+                agent_status = agent.get("status", "active")
+                if agent_status == "active":
+                    active_count += 1
                     agents.append({
                         "id": str(agent["id"]),  # Usar UUID como ID
                         "name": agent["name"],
@@ -178,7 +184,13 @@ async def get_agents():
                         "color": agent.get("color", "#8b5cf6"),
                         "backstory": agent.get("description", agent.get("backstory", ""))
                     })
+                else:
+                    print(f"[API] Agente '{agent.get('name', 'N/A')}' ignorado (status: {agent_status})")
+            
+            print(f"[API] Total de agentes ativos: {active_count} de {len(result.data)}")
             return {"agentes": agents}
+        
+        print(f"[API] Nenhum agente encontrado no banco de dados")
         return {"agentes": []}
     except Exception as e:
         # Log erro sem caracteres especiais que podem causar problemas de encoding
