@@ -183,7 +183,12 @@ from fastapi.responses import JSONResponse
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Handler global para capturar todas as exceções não tratadas"""
+    """Handler global para capturar exceções não tratadas (exceto HTTPException)"""
+    # Não capturar HTTPException - deixar o FastAPI lidar com isso
+    from fastapi import HTTPException as FastAPIHTTPException
+    if isinstance(exc, FastAPIHTTPException):
+        raise exc
+    
     import traceback
     error_traceback = traceback.format_exc()
     print(f"[API_SERVER] ERRO GLOBAL capturado em {request.url.path}: {str(exc)}", flush=True)
