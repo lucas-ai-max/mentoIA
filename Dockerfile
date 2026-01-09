@@ -33,5 +33,5 @@ EXPOSE 8080
 # Tornar o entrypoint executável
 RUN chmod +x entrypoint.sh
 
-# Usar o servidor real api_server.py com lazy loading
-CMD ["python", "-m", "uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--timeout-keep-alive", "600"]
+# Usar servidor simplificado SEM imports pesados
+CMD ["python", "-m", "uvicorn", "simple_server:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--timeout-keep-alive", "600"]
