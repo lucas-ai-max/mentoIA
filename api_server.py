@@ -219,25 +219,30 @@ async def debug_runtime():
     debug_info = {
         "app_routes_count": len(app.routes),
         "admin_routes": [],
+        "all_routes": [],
         "import_status": "unknown",
         "database_status": "unknown",
         "errors": []
     }
     
-    # Verificar rotas admin
+    # Listar todas as rotas
     for route in app.routes:
+        route_info = {
+            "path": getattr(route, 'path', 'N/A'),
+            "methods": list(route.methods) if hasattr(route, 'methods') and route.methods else []
+        }
+        debug_info["all_routes"].append(route_info)
+        
+        # Verificar rotas admin
         if hasattr(route, 'path') and '/api/admin' in route.path:
-            methods = list(route.methods) if hasattr(route, 'methods') and route.methods else []
-            debug_info["admin_routes"].append({
-                "path": route.path,
-                "methods": methods
-            })
+            debug_info["admin_routes"].append(route_info)
     
     # Verificar importação de api_admin
     try:
         from api_admin import router
         debug_info["import_status"] = "success"
         debug_info["admin_router_routes_count"] = len(router.routes)
+        debug_info["admin_router_prefix"] = router.prefix
     except Exception as e:
         debug_info["import_status"] = f"failed: {str(e)}"
         debug_info["errors"].append({
@@ -257,7 +262,8 @@ async def debug_runtime():
         debug_info["database_status"] = f"error: {str(e)}"
         debug_info["errors"].append({
             "type": "database_error",
-            "error": str(e)
+            "error": str(e),
+            "traceback": traceback.format_exc()[:500]
         })
     
     return debug_info
