@@ -49,12 +49,25 @@ def get_db():
     Lazy initialization do Database.
     Retorna a instância do Database ou levanta HTTPException se não disponível.
     """
+    # #region debug log
+    import json
+    with open('.cursor/debug.log', 'a') as f:
+        f.write(json.dumps({"id": "log_get_db_entry", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:47", "message": "get_db() chamado", "data": {"_db_instance_exists": _db_instance is not None, "_db_error_exists": _db_error is not None}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+    # #endregion
     global _db_instance, _db_error, Database
     
     if _db_instance is not None:
+        # #region debug log
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_get_db_cached", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:52", "message": "get_db() retornando instância cached", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+        # #endregion
         return _db_instance
     
     if _db_error is not None:
+        # #region debug log
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_get_db_previous_error", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:57", "message": "get_db() erro anterior detectado", "data": {"error": str(_db_error)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+        # #endregion
         # Se já tentamos e falhou, retornar erro
         raise HTTPException(
             status_code=503,
@@ -62,14 +75,31 @@ def get_db():
         )
     
     # Importar Database se necessário
+    # #region debug log
+    with open('.cursor/debug.log', 'a') as f:
+        f.write(json.dumps({"id": "log_get_db_importing", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:64", "message": "get_db() importando Database", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+    # #endregion
     DB, _ = _import_database()
     
     # Tentar inicializar pela primeira vez
     try:
+        # #region debug log
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_get_db_initializing", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:70", "message": "get_db() inicializando Database", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+        # #endregion
         _db_instance = DB()
+        # #region debug log
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_get_db_success", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:72", "message": "get_db() Database inicializado com sucesso", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+        # #endregion
         print("[API_ADMIN] Database inicializado (lazy)")
         return _db_instance
     except Exception as e:
+        # #region debug log
+        import traceback
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_get_db_error", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:75", "message": "get_db() ERRO ao inicializar Database", "data": {"error": str(e), "error_type": type(e).__name__, "traceback": traceback.format_exc()}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+        # #endregion
         _db_error = e
         print(f"[API_ADMIN] ERRO ao inicializar Database (lazy): {str(e)}")
         import traceback
