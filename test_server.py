@@ -2,8 +2,18 @@
 Servidor minimal para testar se o problema é com as dependências
 """
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+# Adicionar CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://web-rust-pi-54.vercel.app", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():
