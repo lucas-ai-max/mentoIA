@@ -462,11 +462,11 @@ async def start_debate(request: DebateRequest):
                 )
                 print(f"[DEBATE] Debate salvo no banco com ID: {debate_id}")
             except Exception as db_error:
-            print(f"[DEBATE] ERRO CRITICO ao salvar no banco: {str(db_error)}")
-            print(f"[DEBATE] Tipo do erro: {type(db_error).__name__}")
-            import traceback
-            traceback.print_exc()
-            debate_id = None
+                print(f"[DEBATE] ERRO CRITICO ao salvar no banco: {str(db_error)}")
+                print(f"[DEBATE] Tipo do erro: {type(db_error).__name__}")
+                import traceback
+                traceback.print_exc()
+                debate_id = None
         
         return {
             "debate_id": debate_id,
