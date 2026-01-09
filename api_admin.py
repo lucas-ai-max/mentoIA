@@ -1099,7 +1099,20 @@ async def update_settings(settings_update: SettingsUpdateRequest):
 @router.get("/debug")
 async def debug_info():
     """Endpoint de debug para verificar conexão e dados no Supabase"""
+    # #region debug log
+    import json
     try:
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_debug_endpoint_entry", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:956", "message": "debug_info() chamado", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "E"}) + "\n")
+    except: pass
+    # #endregion
+    try:
+        # #region debug log
+        try:
+            with open('.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"id": "log_debug_get_db_call", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:963", "message": "debug_info() chamando get_db()", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+        except: pass
+        # #endregion
         db_instance = get_db()
         
         debug_info = {
