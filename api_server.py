@@ -177,6 +177,28 @@ app.add_middleware(
 )
 print("[API_SERVER] CORS middleware configurado", flush=True)
 
+# Adicionar exception handler global para capturar erros não tratados
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handler global para capturar todas as exceções não tratadas"""
+    import traceback
+    error_traceback = traceback.format_exc()
+    print(f"[API_SERVER] ERRO GLOBAL capturado em {request.url.path}: {str(exc)}", flush=True)
+    print(f"[API_SERVER] Traceback: {error_traceback}", flush=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Erro interno do servidor: {str(exc)}",
+            "error_type": type(exc).__name__,
+            "path": str(request.url.path),
+            "method": request.method,
+            "traceback": error_traceback[:1000]  # Limitar tamanho
+        }
+    )
+
 # NÃO registrar router de admin aqui - será feito no startup event (lazy)
 print("[API_SERVER] Router de admin será registrado no startup event (lazy)", flush=True)
 
