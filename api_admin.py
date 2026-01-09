@@ -364,18 +364,36 @@ async def get_agent(agent_id: str):
 async def create_agent(agent: AgentCreate):
     """Cria um novo agente"""
     try:
+        logger.info(f"Criando novo agente: {agent.name}")
+        print(f"[API_ADMIN] Criando novo agente: {agent.name}", flush=True)
+        
         agent_data = agent.dict()
         agent_data["created_at"] = datetime.now().isoformat()
         agent_data["updated_at"] = datetime.now().isoformat()
         agent_data["total_debates"] = 0
         
-        result = db.supabase.table("agents").insert(agent_data).execute()
-        if not result.data:
-            raise HTTPException(status_code=500, detail="Erro ao criar agente")
-        return result.data[0]
+        try:
+            db_instance = get_db()
+            result = db_instance.supabase.table("agents").insert(agent_data).execute()
+            if not result.data:
+                logger.error("Erro ao criar agente: resultado vazio do banco")
+                raise HTTPException(status_code=500, detail="Erro ao criar agente: resultado vazio")
+            logger.info(f"Agente criado com sucesso: {result.data[0].get('id')}")
+            print(f"[API_ADMIN] Agente criado com sucesso: {result.data[0].get('id')}", flush=True)
+            return result.data[0]
+        except HTTPException:
+            raise
+        except Exception as db_err:
+            logger.error(f"Erro ao criar agente no banco: {str(db_err)}", exc_info=True)
+            print(f"[API_ADMIN] ERRO ao criar agente no banco: {str(db_err)}", flush=True)
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Erro ao criar agente: {str(db_err)}")
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"ERRO CRÍTICO ao criar agente: {str(e)}", exc_info=True)
+        print(f"[API_ADMIN] ERRO CRÍTICO ao criar agente: {str(e)}", flush=True)
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro ao criar agente: {str(e)}")
 
 @router.put("/agents/{agent_id}")
