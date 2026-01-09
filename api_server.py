@@ -41,17 +41,8 @@ print("[API_SERVER] Importações pesadas (CrewAI) serão feitas lazy (quando ne
 import uvicorn
 print("[API_SERVER] Uvicorn importado com sucesso", flush=True)
 
-# Importar router de admin com tratamento de erro
+# NÃO importar admin_router aqui - será feito lazy no startup
 admin_router = None
-try:
-    from api_admin import router as admin_router
-    print("[API_SERVER] Router de admin importado com sucesso")
-    print(f"[API_SERVER] Router prefix: {admin_router.prefix if admin_router else 'None'}")
-    print(f"[API_SERVER] Numero de rotas no router: {len(admin_router.routes) if admin_router else 0}")
-except Exception as e:
-    print(f"[API_SERVER] ERRO ao importar router de admin: {str(e)}")
-    import traceback
-    traceback.print_exc()
 
 app = FastAPI(title="BillIA API")
 print("[API_SERVER] FastAPI app criado com sucesso", flush=True)
@@ -86,13 +77,22 @@ def get_database():
 # Evento de startup - inicializar Database após o servidor iniciar
 @app.on_event("startup")
 async def startup_event():
-    """Inicializa o Database após o servidor iniciar - LAZY"""
-    global db, Database
+    """Inicializa recursos após o servidor iniciar - LAZY"""
+    global db, Database, admin_router
+    print("[API_SERVER] Startup event: Servidor iniciando...", flush=True)
+    
+    # Importar e registrar admin router (agora que o servidor já está rodando)
+    try:
+        print("[API_SERVER] Importando router de admin (lazy)...", flush=True)
+        from api_admin import router as admin_router_imported
+        admin_router = admin_router_imported
+        app.include_router(admin_router)
+        print(f"[API_SERVER] Router de admin registrado: {len(admin_router.routes)} rotas")
+    except Exception as e:
+        print(f"[API_SERVER] AVISO: Erro ao importar router de admin: {str(e)}")
+    
     print("[API_SERVER] Startup event: Servidor pronto!", flush=True)
     print("[API_SERVER] Database será inicializado na primeira requisição (lazy)", flush=True)
-    
-    # Não inicializar Database aqui para acelerar startup
-    # Será inicializado na primeira requisição que precisar dele
 
 # CORS para permitir requisições do frontend
 # Obter origens permitidas das variáveis de ambiente
@@ -112,18 +112,8 @@ app.add_middleware(
 )
 print("[API_SERVER] CORS middleware configurado", flush=True)
 
-# Registrar router de admin ANTES das outras rotas
-if admin_router:
-    app.include_router(admin_router)
-    print("[API_SERVER] Rotas de admin registradas: /api/admin/*")
-    # Listar todas as rotas registradas para debug
-    print(f"[API_SERVER] Total de rotas registradas: {len(app.routes)}")
-    admin_routes = [r.path for r in app.routes if hasattr(r, 'path') and '/api/admin' in r.path]
-    print(f"[API_SERVER] Rotas de admin encontradas: {len(admin_routes)}")
-    if admin_routes:
-        print(f"[API_SERVER] Exemplos: {admin_routes[:3]}")
-else:
-    print("[API_SERVER] AVISO: Router de admin nao foi registrado", flush=True)
+# NÃO registrar router de admin aqui - será feito no startup event (lazy)
+print("[API_SERVER] Router de admin será registrado no startup event (lazy)", flush=True)
 
 print("[API_SERVER] ==========================================", flush=True)
 print("[API_SERVER] Módulo api_server carregado com sucesso!", flush=True)
