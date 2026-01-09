@@ -5,9 +5,15 @@ Este guia explica como fazer deploy do backend Python no Google Cloud Run e cone
 ## 📋 Pré-requisitos
 
 1. Conta no Google Cloud Platform (GCP)
-2. Projeto no GitHub
-3. Conta na Vercel (para o frontend)
-4. Google Cloud SDK instalado (opcional, para deploy manual)
+2. **Billing habilitado no projeto GCP** ⚠️ **OBRIGATÓRIO**
+3. Projeto no GitHub
+4. Conta na Vercel (para o frontend)
+5. Google Cloud SDK instalado (opcional, para deploy manual)
+
+> **⚠️ IMPORTANTE:** O Google Cloud requer billing habilitado para usar Artifact Registry e Cloud Run. 
+> - Cloud Run oferece um tier gratuito generoso (2 milhões de requisições/mês)
+> - Artifact Registry também tem tier gratuito (0.5 GB de armazenamento)
+> - [Habilitar billing](https://console.developers.google.com/billing/enable)
 
 ## 🔧 Passo 1: Configurar Google Cloud
 
@@ -17,15 +23,22 @@ Este guia explica como fazer deploy do backend Python no Google Cloud Run e cone
 2. Crie um novo projeto ou selecione um existente
 3. Anote o **Project ID** (você vai precisar dele)
 
-### 1.2 Ativar APIs Necessárias
+### 1.2 Habilitar Billing ⚠️ OBRIGATÓRIO
+
+1. Acesse: https://console.developers.google.com/billing/enable
+2. Selecione seu projeto
+3. Escolha uma conta de billing ou crie uma nova
+4. **Nota:** Cloud Run tem tier gratuito generoso, então você não será cobrado a menos que exceda os limites gratuitos
+
+### 1.3 Ativar APIs Necessárias
 
 1. Vá em **APIs e Serviços > Biblioteca**
 2. Ative as seguintes APIs:
    - **Cloud Run API**
    - **Cloud Build API**
-   - **Container Registry API**
+   - **Artifact Registry API** (substitui Container Registry)
 
-### 1.3 Criar Conta de Serviço (para CI/CD)
+### 1.4 Criar Conta de Serviço (para CI/CD)
 
 1. Vá em **IAM e Administração > Contas de Serviço**
 2. Clique em **Criar Conta de Serviço**
@@ -189,6 +202,23 @@ curl https://mentoia-api-xxxxx-uc.a.run.app/api/health
 3. Verifique o console do navegador para erros de CORS
 
 ## 🔍 Troubleshooting
+
+### Erro: "This API method requires billing to be enabled"
+
+**Causa:** O projeto GCP não tem billing habilitado.
+
+**Solução:**
+1. Acesse: https://console.developers.google.com/billing/enable?project=SEU-PROJECT-ID
+2. Substitua `SEU-PROJECT-ID` pelo ID do seu projeto (ex: `1047931843367`)
+3. Escolha uma conta de billing ou crie uma nova
+4. Aguarde alguns minutos para a propagação
+5. Tente o deploy novamente
+
+**Nota:** Cloud Run oferece tier gratuito generoso:
+- 2 milhões de requisições/mês
+- 360.000 GB-segundos de memória
+- 180.000 vCPU-segundos
+- Você só será cobrado se exceder esses limites
 
 ### Erro: "CORS policy blocked"
 

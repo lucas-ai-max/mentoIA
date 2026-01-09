@@ -22,14 +22,14 @@ jobs:
       
       - name: Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker us-central1-docker.pkg.dev
+          gcloud auth configure-docker southamerica-east1-docker.pkg.dev
       
       - name: Build and Push Docker image
         run: |
           export PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-          export REGION="us-central1"
+          export REGION="southamerica-east1"
           export REPOSITORY="docker-repo"
-          export IMAGE_NAME="us-central1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/mentoia-api:${{ github.sha }}"
+          export IMAGE_NAME="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/mentoia-api:${{ github.sha }}"
           
           # Criar repositório se não existir
           gcloud artifacts repositories create $REPOSITORY \
@@ -43,9 +43,9 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           export PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-          export REGION="us-central1"
+          export REGION="southamerica-east1"
           export REPOSITORY="docker-repo"
-          export IMAGE_NAME="us-central1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/mentoia-api:${{ github.sha }}"
+          export IMAGE_NAME="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/mentoia-api:${{ github.sha }}"
           
           gcloud run deploy mentoia-api \
             --image $IMAGE_NAME \
