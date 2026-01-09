@@ -1,6 +1,7 @@
 """
 API de administração para gerenciar agentes e configurações
 """
+import logging
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
@@ -9,8 +10,16 @@ import hashlib
 import uuid
 import os
 import re
+import traceback
 
-print("[API_ADMIN] Carregando modulo api_admin...")
+# Configurar logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+print("[API_ADMIN] Carregando modulo api_admin...", flush=True)
 
 # LAZY IMPORT - Não importar Database no nível do módulo para acelerar startup
 Database = None
@@ -230,45 +239,68 @@ async def list_agents(
 ):
     """Lista todos os agentes com filtros opcionais"""
     try:
-        print(f"[API_ADMIN] Listando agentes - search={search}, llm={llm}, status={status}")
+        logger.info(f"Listando agentes - search={search}, llm={llm}, status={status}")
+        print(f"[API_ADMIN] Listando agentes - search={search}, llm={llm}, status={status}", flush=True)
         
         # Obter instância do Database (lazy initialization)
-        db_instance = get_db()
+        try:
+            db_instance = get_db()
+        except HTTPException as http_err:
+            logger.error(f"Erro HTTP ao obter database: {http_err.detail}")
+            # Se database não disponível, retornar lista vazia em vez de erro
+            logger.warning("Database não disponível, retornando lista vazia")
+            return {"agents": []}
+        except Exception as db_err:
+            logger.error(f"Erro ao obter database: {str(db_err)}", exc_info=True)
+            # Se database não disponível, retornar lista vazia em vez de erro
+            logger.warning("Database não disponível, retornando lista vazia")
+            return {"agents": []}
         
         # Verificar se a tabela existe
         try:
             # Primeiro, tentar uma query simples para verificar conexão
-            print(f"[API_ADMIN] Testando conexao com Supabase...")
+            logger.info("Testando conexão com Supabase...")
+            print(f"[API_ADMIN] Testando conexao com Supabase...", flush=True)
             test_result = db_instance.supabase.table("agents").select("id").limit(1).execute()
-            print(f"[API_ADMIN] Conexao OK. Teste retornou: {len(test_result.data) if test_result.data else 0} registros")
+            logger.info(f"Conexão OK. Teste retornou: {len(test_result.data) if test_result.data else 0} registros")
+            print(f"[API_ADMIN] Conexao OK. Teste retornou: {len(test_result.data) if test_result.data else 0} registros", flush=True)
             
             # Agora fazer a query completa
             query = db_instance.supabase.table("agents").select("*")
             
             if status:
                 query = query.eq("status", status)
-                print(f"[API_ADMIN] Aplicando filtro status={status}")
+                logger.info(f"Aplicando filtro status={status}")
             if llm:
                 query = query.eq("llm_model", llm)
-                print(f"[API_ADMIN] Aplicando filtro llm={llm}")
+                logger.info(f"Aplicando filtro llm={llm}")
             
-            print(f"[API_ADMIN] Executando query completa...")
+            logger.info("Executando query completa...")
+            print(f"[API_ADMIN] Executando query completa...", flush=True)
             result = query.order("created_at", desc=True).execute()
             agents = result.data if result.data else []
             
-            print(f"[API_ADMIN] Query executada com sucesso. {len(agents)} agentes encontrados")
+            logger.info(f"Query executada com sucesso. {len(agents)} agentes encontrados")
+            print(f"[API_ADMIN] Query executada com sucesso. {len(agents)} agentes encontrados", flush=True)
             
             # Log detalhado se não houver agentes
             if len(agents) == 0:
-                print(f"[API_ADMIN] AVISO: Nenhum agente encontrado. Verificando possiveis causas...")
+                logger.warning("Nenhum agente encontrado. Verificando possíveis causas...")
+                print(f"[API_ADMIN] AVISO: Nenhum agente encontrado. Verificando possiveis causas...", flush=True)
                 # Tentar sem filtros para ver se há algum agente
-                all_result = db_instance.supabase.table("agents").select("id, name, status").execute()
-                all_agents = all_result.data if all_result.data else []
-                print(f"[API_ADMIN] Total de agentes na tabela (sem filtros): {len(all_agents)}")
-                if all_agents:
-                    print(f"[API_ADMIN] Agentes encontrados (primeiros 3):")
-                    for agent in all_agents[:3]:
-                        print(f"  - {agent.get('name', 'N/A')} (status: {agent.get('status', 'N/A')}, id: {agent.get('id', 'N/A')})")
+                try:
+                    all_result = db_instance.supabase.table("agents").select("id, name, status").execute()
+                    all_agents = all_result.data if all_result.data else []
+                    logger.info(f"Total de agentes na tabela (sem filtros): {len(all_agents)}")
+                    print(f"[API_ADMIN] Total de agentes na tabela (sem filtros): {len(all_agents)}", flush=True)
+                    if all_agents:
+                        logger.info("Agentes encontrados (primeiros 3):")
+                        print(f"[API_ADMIN] Agentes encontrados (primeiros 3):", flush=True)
+                        for agent in all_agents[:3]:
+                            logger.info(f"  - {agent.get('name', 'N/A')} (status: {agent.get('status', 'N/A')}, id: {agent.get('id', 'N/A')})")
+                            print(f"  - {agent.get('name', 'N/A')} (status: {agent.get('status', 'N/A')}, id: {agent.get('id', 'N/A')})", flush=True)
+                except Exception as check_err:
+                    logger.warning(f"Erro ao verificar agentes sem filtros: {str(check_err)}")
             
             if search:
                 search_lower = search.lower()
@@ -277,37 +309,42 @@ async def list_agents(
                     if search_lower in agent.get("name", "").lower()
                     or search_lower in agent.get("role", "").lower()
                 ]
-                print(f"[API_ADMIN] Apos busca: {len(agents)} agentes")
+                logger.info(f"Após busca: {len(agents)} agentes")
+                print(f"[API_ADMIN] Apos busca: {len(agents)} agentes", flush=True)
             
             return {"agents": agents}
         except Exception as table_error:
             # Log detalhado do erro
             error_msg = str(table_error).lower()
-            print(f"[API_ADMIN] ERRO ao consultar tabela agents: {str(table_error)}")
-            import traceback
+            logger.error(f"ERRO ao consultar tabela agents: {str(table_error)}", exc_info=True)
+            print(f"[API_ADMIN] ERRO ao consultar tabela agents: {str(table_error)}", flush=True)
             traceback.print_exc()
             
             # Se a tabela não existir, retornar lista vazia
             if "relation" in error_msg and "does not exist" in error_msg:
-                print("[API_ADMIN] AVISO: Tabela 'agents' nao existe. Retornando lista vazia.")
-                print("[API_ADMIN] DICA: Execute supabase_admin_schema.sql no Supabase para criar as tabelas")
+                logger.warning("Tabela 'agents' não existe. Retornando lista vazia.")
+                print("[API_ADMIN] AVISO: Tabela 'agents' nao existe. Retornando lista vazia.", flush=True)
                 return {"agents": []}
             elif "permission denied" in error_msg or "row-level security" in error_msg:
-                print("[API_ADMIN] ERRO: RLS bloqueando acesso. Verifique as politicas RLS.")
-                print("[API_ADMIN] DICA: Execute supabase_rls_setup.sql no Supabase")
+                logger.error("RLS bloqueando acesso. Verifique as políticas RLS.")
+                print("[API_ADMIN] ERRO: RLS bloqueando acesso. Verifique as politicas RLS.", flush=True)
                 raise HTTPException(
                     status_code=503,
-                    detail="Acesso negado pela politica RLS. Verifique as configuracoes de seguranca do Supabase."
+                    detail="Acesso negado pela política RLS. Verifique as configurações de segurança do Supabase."
                 )
             else:
-                raise
+                # Para outros erros, retornar lista vazia em vez de quebrar
+                logger.error(f"Erro desconhecido ao consultar tabela: {str(table_error)}")
+                return {"agents": []}
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[API_ADMIN] ERRO ao listar agentes: {str(e)}")
-        import traceback
+        logger.error(f"ERRO CRÍTICO ao listar agentes: {str(e)}", exc_info=True)
+        print(f"[API_ADMIN] ERRO CRÍTICO ao listar agentes: {str(e)}", flush=True)
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Erro ao listar agentes: {str(e)}")
+        # Retornar lista vazia em vez de erro 500 para não quebrar o frontend
+        logger.warning("Retornando lista vazia devido a erro")
+        return {"agents": []}
 
 @router.get("/agents/{agent_id}")
 async def get_agent(agent_id: str):
@@ -477,10 +514,21 @@ async def test_agent(agent_id: str, request: TestMessageRequest):
 async def list_llm_providers():
     """Lista todos os provedores de LLM com suas configurações"""
     try:
-        db_instance = get_db()
-        # Buscar configurações do banco
-        result = db_instance.supabase.table("llm_providers").select("*").execute()
-        providers_data = result.data if result.data else []
+        logger.info("Listando providers LLM...")
+        print("[API_ADMIN] Listando providers LLM...", flush=True)
+        
+        # Tentar obter database, mas não falhar se não disponível
+        providers_data = []
+        try:
+            db_instance = get_db()
+            # Buscar configurações do banco
+            result = db_instance.supabase.table("llm_providers").select("*").execute()
+            providers_data = result.data if result.data else []
+            logger.info(f"Encontrados {len(providers_data)} providers no banco")
+        except Exception as db_err:
+            logger.warning(f"Erro ao buscar providers do banco: {str(db_err)}. Continuando com providers padrão.")
+            print(f"[API_ADMIN] AVISO: Erro ao buscar providers do banco: {str(db_err)}. Continuando com providers padrão.", flush=True)
+            providers_data = []
         
         # Criar dicionário com providers padrão
         providers_map = {
@@ -578,12 +626,43 @@ async def list_llm_providers():
                         if model_key in enabled_models:
                             providers_map[provider_name]["models"][model_key]["enabled"] = True
         
-        return {"providers": list(providers_map.values())}
+        providers_list = list(providers_map.values())
+        logger.info(f"Retornando {len(providers_list)} providers")
+        return {"providers": providers_list}
     except Exception as e:
-        print(f"[API_ADMIN] Erro ao listar LLMs: {str(e)}")
-        import traceback
+        logger.error(f"ERRO ao listar LLMs: {str(e)}", exc_info=True)
+        print(f"[API_ADMIN] Erro ao listar LLMs: {str(e)}", flush=True)
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Erro ao listar provedores: {str(e)}")
+        # Em caso de erro, retornar providers padrão em vez de quebrar
+        logger.warning("Retornando providers padrão devido a erro")
+        return {
+            "providers": [
+                {
+                    "provider": "openai",
+                    "name": "OpenAI",
+                    "description": "GPT Models",
+                    "status": "disconnected",
+                    "api_key": None,
+                    "models": {}
+                },
+                {
+                    "provider": "anthropic",
+                    "name": "Anthropic",
+                    "description": "Claude Models",
+                    "status": "disconnected",
+                    "api_key": None,
+                    "models": {}
+                },
+                {
+                    "provider": "google",
+                    "name": "Google",
+                    "description": "Gemini Models",
+                    "status": "disconnected",
+                    "api_key": None,
+                    "models": {}
+                }
+            ]
+        }
 
 @router.get("/llms/{provider}")
 async def get_llm_provider(provider: str):
