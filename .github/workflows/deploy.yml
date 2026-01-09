@@ -26,23 +26,25 @@ jobs:
       
       - name: Set project and configure
         run: |
-          echo "PROJECT_ID=80767420742" >> $GITHUB_ENV
+          echo "PROJECT_ID=sistema-mentores" >> $GITHUB_ENV
           echo "REGION=southamerica-east1" >> $GITHUB_ENV
           echo "SERVICE_NAME=mentoia-api" >> $GITHUB_ENV
           echo "REPOSITORY=docker-repo" >> $GITHUB_ENV
           
           # Configurar projeto padrão
-          gcloud config set project 80767420742
+          gcloud config set project sistema-mentores
       
       - name: Build and Push Docker image
         run: |
-          PROJECT_ID="80767420742"
+          PROJECT_ID="sistema-mentores"
           REGION="southamerica-east1"
           REPOSITORY="docker-repo"
           SERVICE_NAME="mentoia-api"
           IMAGE_NAME="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE_NAME}:${{ github.sha }}"
           
           echo "Building image: ${IMAGE_NAME}"
+          echo "Project: ${PROJECT_ID}"
+          echo "Region: ${REGION}"
           
           # Criar repositório se não existir
           gcloud artifacts repositories create ${REPOSITORY} \
@@ -61,7 +63,7 @@ jobs:
       
       - name: Deploy to Cloud Run
         run: |
-          PROJECT_ID="80767420742"
+          PROJECT_ID="sistema-mentores"
           REGION="southamerica-east1"
           SERVICE_NAME="mentoia-api"
           REPOSITORY="docker-repo"
