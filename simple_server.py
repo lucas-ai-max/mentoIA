@@ -39,6 +39,26 @@ def get_agents():
     """Retorna lista vazia - Database será conectado depois"""
     return {"agentes": []}
 
+# Rotas de admin - retornar respostas vazias por enquanto
+@app.get("/api/admin/agents")
+def admin_list_agents():
+    """Lista de agentes para admin"""
+    return {"agents": []}
+
+@app.get("/api/admin/stats")
+def admin_stats():
+    """Estatísticas do dashboard"""
+    return {
+        "total_agents": 0,
+        "agents_this_month": 0,
+        "total_debates": 0,
+        "debates_this_week": 0,
+        "llms_count": 0,
+        "llms_list": ["Nenhum configurado"],
+        "api_usage_percent": 0,
+        "recent_activities": []
+    }
+
 # Inicialização se executado diretamente
 if __name__ == "__main__":
     import uvicorn
