@@ -51,14 +51,18 @@ print("[API_SERVER] FastAPI app criado com sucesso", flush=True)
 try:
     # #region debug log
     import json
-    with open('.cursor/debug.log', 'a') as f:
-        f.write(json.dumps({"id": "log_init_import_start", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:52", "message": "Iniciando importação de api_admin", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
+    try:
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_init_import_start", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:54", "message": "Iniciando importação de api_admin", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
+    except: pass
     # #endregion
     print("[API_SERVER] Importando api_admin...", flush=True)
     from api_admin import router as admin_router_imported
     # #region debug log
-    with open('.cursor/debug.log', 'a') as f:
-        f.write(json.dumps({"id": "log_init_import_success", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:55", "message": "api_admin importado com sucesso", "data": {"prefix": admin_router_imported.prefix, "routes_count": len(admin_router_imported.routes)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
+    try:
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_init_import_success", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:60", "message": "api_admin importado com sucesso", "data": {"prefix": admin_router_imported.prefix, "routes_count": len(admin_router_imported.routes)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
+    except: pass
     # #endregion
     print(f"[API_SERVER] Router importado: prefix={admin_router_imported.prefix}", flush=True)
     print(f"[API_SERVER] Total de rotas no router: {len(admin_router_imported.routes)}", flush=True)
@@ -71,13 +75,17 @@ try:
             print(f"  {route.path} {methods}", flush=True)
     
     # #region debug log
-    with open('.cursor/debug.log', 'a') as f:
-        f.write(json.dumps({"id": "log_before_include_router", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:64", "message": "Antes de include_router", "data": {"routes_count": len(admin_router_imported.routes)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "C"}) + "\n")
+    try:
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_before_include_router", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:77", "message": "Antes de include_router", "data": {"routes_count": len(admin_router_imported.routes)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "C"}) + "\n")
+    except: pass
     # #endregion
     app.include_router(admin_router_imported)
     # #region debug log
-    with open('.cursor/debug.log', 'a') as f:
-        f.write(json.dumps({"id": "log_after_include_router", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:66", "message": "Após include_router", "data": {"app_routes_count": len(app.routes)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "C"}) + "\n")
+    try:
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_after_include_router", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:79", "message": "Após include_router", "data": {"app_routes_count": len(app.routes)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "C"}) + "\n")
+    except: pass
     # #endregion
     print("[API_SERVER] Router de admin registrado com sucesso", flush=True)
     
@@ -101,8 +109,10 @@ try:
 except Exception as e:
     # #region debug log
     import json, traceback
-    with open('.cursor/debug.log', 'a') as f:
-        f.write(json.dumps({"id": "log_init_import_error", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:84", "message": "ERRO ao importar api_admin", "data": {"error": str(e), "error_type": type(e).__name__, "traceback": traceback.format_exc()}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
+    try:
+        with open('.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"id": "log_init_import_error", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:104", "message": "ERRO ao importar api_admin", "data": {"error": str(e), "error_type": type(e).__name__, "traceback": traceback.format_exc()[:500]}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
+    except: pass
     # #endregion
     print(f"[API_SERVER] ERRO ao importar api_admin: {str(e)}", flush=True)
     import traceback
@@ -140,7 +150,7 @@ async def startup_event():
     import json
     try:
         with open('.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"id": "log_startup_event", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:114", "message": "Startup event executado", "data": {"app_routes_count": len(app.routes)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "E"}) + "\n")
+            f.write(json.dumps({"id": "log_startup_event", "timestamp": int(__import__('time').time() * 1000), "location": "api_server.py:120", "message": "Startup event executado", "data": {"app_routes_count": len(app.routes)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "E"}) + "\n")
     except: pass
     # #endregion
     print("[API_SERVER] Startup event: Servidor pronto!", flush=True)
