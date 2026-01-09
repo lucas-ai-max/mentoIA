@@ -30,6 +30,8 @@ ENV OTEL_SDK_DISABLED=true
 # Expor porta
 EXPOSE 8080
 
-# Usar uvicorn diretamente para startup mais rápido
-# O uvicorn carrega o app de forma lazy, só quando necessário
-CMD ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--timeout-keep-alive", "600"]
+# Tornar o entrypoint executável
+RUN chmod +x entrypoint.sh
+
+# Usar entrypoint.sh que tem verificações robustas
+CMD ["./entrypoint.sh"]
