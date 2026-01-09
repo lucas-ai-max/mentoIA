@@ -253,12 +253,47 @@ print("[API_SERVER] ==========================================", flush=True)
 @app.get("/")
 async def root():
     """Health check básico"""
-    return {"status": "ok", "service": "MentorIA API", "version": "1.0"}
+    try:
+        return {"status": "ok", "service": "MentorIA API", "version": "1.0"}
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "error": str(e),
+            "traceback": traceback.format_exc()[:500]
+        }
 
 @app.get("/health")
 async def health():
     """Health check para Cloud Run"""
-    return {"status": "healthy"}
+    try:
+        return {"status": "healthy", "routes_count": len(app.routes)}
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "error": str(e),
+            "traceback": traceback.format_exc()[:500]
+        }
+
+@app.get("/api/test/simple")
+async def test_simple():
+    """Rota de teste simples - não depende de nada"""
+    try:
+        return {
+            "status": "ok",
+            "message": "Rota de teste funcionando",
+            "app_routes": len(app.routes),
+            "test": "success"
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc()[:1000]
+        }
 
 @app.get("/api/debug/runtime")
 async def debug_runtime():
