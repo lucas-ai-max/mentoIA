@@ -47,9 +47,15 @@ admin_router = None
 app = FastAPI(title="BillIA API")
 print("[API_SERVER] FastAPI app criado com sucesso", flush=True)
 
-# Verificar se admin_router foi importado
-print(f"[API_SERVER] admin_router apos importacao: {admin_router}", flush=True)
-print(f"[API_SERVER] Tipo de admin_router: {type(admin_router)}", flush=True)
+# Importar admin router ANTES do startup event (mas de forma segura)
+try:
+    print("[API_SERVER] Importando api_admin...", flush=True)
+    from api_admin import router as admin_router_imported
+    app.include_router(admin_router_imported)
+    print("[API_SERVER] Router de admin registrado com sucesso", flush=True)
+except Exception as e:
+    print(f"[API_SERVER] AVISO: Erro ao importar api_admin: {str(e)}", flush=True)
+    print("[API_SERVER] Continuando sem rotas de admin", flush=True)
 
 # Inicializar banco de dados - LAZY LOADING para acelerar startup
 db = None
@@ -77,19 +83,9 @@ def get_database():
 # Evento de startup - inicializar Database após o servidor iniciar
 @app.on_event("startup")
 async def startup_event():
-    """Inicializa recursos após o servidor iniciar - LAZY"""
-    global db, Database, admin_router
-    print("[API_SERVER] Startup event: Servidor iniciando...", flush=True)
-    
-    # Importar e registrar admin router (agora que o servidor já está rodando)
-    try:
-        print("[API_SERVER] Importando router de admin (lazy)...", flush=True)
-        from api_admin import router as admin_router_imported
-        admin_router = admin_router_imported
-        app.include_router(admin_router)
-        print(f"[API_SERVER] Router de admin registrado: {len(admin_router.routes)} rotas")
-    except Exception as e:
-        print(f"[API_SERVER] AVISO: Erro ao importar router de admin: {str(e)}")
+    """Startup event - não fazer nada pesado aqui"""
+    print("[API_SERVER] Startup event: Servidor pronto!", flush=True)
+    print("[API_SERVER] Rotas de admin e database serão carregados lazy", flush=True)
     
     print("[API_SERVER] Startup event: Servidor pronto!", flush=True)
     print("[API_SERVER] Database será inicializado na primeira requisição (lazy)", flush=True)
