@@ -52,12 +52,35 @@ try:
     print("[API_SERVER] Importando api_admin...", flush=True)
     from api_admin import router as admin_router_imported
     print(f"[API_SERVER] Router importado: prefix={admin_router_imported.prefix}", flush=True)
+    print(f"[API_SERVER] Total de rotas no router: {len(admin_router_imported.routes)}", flush=True)
+    
+    # Listar todas as rotas antes de registrar
+    print("[API_SERVER] Rotas no router antes de registrar:", flush=True)
+    for route in admin_router_imported.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            methods = list(route.methods) if route.methods else []
+            print(f"  {route.path} {methods}", flush=True)
+    
     app.include_router(admin_router_imported)
     print("[API_SERVER] Router de admin registrado com sucesso", flush=True)
-    # Listar rotas registradas para debug
-    routes = [route.path for route in app.routes if hasattr(route, 'path')]
-    admin_routes = [r for r in routes if '/api/admin' in r]
-    print(f"[API_SERVER] Rotas de admin registradas: {admin_routes[:5]}...", flush=True)
+    
+    # Listar rotas registradas no app para debug
+    print("[API_SERVER] Rotas registradas no app após include_router:", flush=True)
+    admin_routes_in_app = []
+    for route in app.routes:
+        if hasattr(route, 'path') and '/api/admin' in route.path:
+            methods = list(route.methods) if hasattr(route, 'methods') and route.methods else []
+            admin_routes_in_app.append(f"{route.path} {methods}")
+            print(f"  {route.path} {methods}", flush=True)
+    
+    print(f"[API_SERVER] Total de rotas de admin no app: {len(admin_routes_in_app)}", flush=True)
+    
+    # Verificar especificamente as rotas problemáticas
+    llms_routes = [r for r in admin_routes_in_app if '/llms' in r]
+    agents_post_routes = [r for r in admin_routes_in_app if '/agents' in r and 'POST' in r]
+    print(f"[API_SERVER] Rotas /llms encontradas: {llms_routes}", flush=True)
+    print(f"[API_SERVER] Rotas POST /agents encontradas: {agents_post_routes}", flush=True)
+    
 except Exception as e:
     print(f"[API_SERVER] ERRO ao importar api_admin: {str(e)}", flush=True)
     import traceback
