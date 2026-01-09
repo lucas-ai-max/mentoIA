@@ -922,6 +922,67 @@ async def update_settings(settings_update: SettingsUpdateRequest):
 
 @router.get("/debug")
 async def debug_info():
+    """Endpoint de debug para verificar conexão e dados no Supabase"""
+    try:
+        db_instance = get_db()
+        
+        debug_info = {
+            "database_connected": True,
+            "supabase_url": os.getenv("SUPABASE_URL", "N/A"),
+            "service_role_configured": bool(os.getenv("SUPABASE_SERVICE_ROLE_KEY")),
+            "tables": {}
+        }
+        
+        # Testar cada tabela
+        tables_to_test = ["agents", "llm_providers", "debates", "messages", "system_settings"]
+        
+        for table_name in tables_to_test:
+            try:
+                # Tentar contar registros
+                result = db_instance.supabase.table(table_name).select("id", count="exact").limit(1).execute()
+                count = result.count if hasattr(result, 'count') else (len(result.data) if result.data else 0)
+                
+                # Tentar buscar alguns registros
+                sample_result = db_instance.supabase.table(table_name).select("*").limit(3).execute()
+                sample_data = sample_result.data if sample_result.data else []
+                
+                debug_info["tables"][table_name] = {
+                    "exists": True,
+                    "count": count,
+                    "sample_count": len(sample_data),
+                    "sample_data": sample_data[:2] if sample_data else []  # Apenas 2 primeiros para não ficar muito grande
+                }
+            except Exception as e:
+                error_msg = str(e).lower()
+                if "relation" in error_msg and "does not exist" in error_msg:
+                    debug_info["tables"][table_name] = {
+                        "exists": False,
+                        "error": "Tabela não existe"
+                    }
+                elif "permission denied" in error_msg or "row-level security" in error_msg:
+                    debug_info["tables"][table_name] = {
+                        "exists": True,
+                        "error": "RLS bloqueando acesso (permission denied)",
+                        "hint": "Verifique as políticas RLS em supabase_rls_setup.sql"
+                    }
+                else:
+                    debug_info["tables"][table_name] = {
+                        "exists": True,
+                        "error": str(e)
+                    }
+        
+        return debug_info
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "database_connected": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+@router.get("/debug-old")
+async def debug_info():
     """Endpoint de debug para verificar se as rotas estão funcionando"""
     return {
         "status": "ok",
