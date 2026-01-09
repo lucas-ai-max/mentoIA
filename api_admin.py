@@ -277,6 +277,8 @@ async def list_agents(
             f.write(json.dumps({"id": "log_list_agents_entry", "timestamp": int(__import__('time').time() * 1000), "location": "api_admin.py:264", "message": "list_agents() chamado", "data": {"search": search, "llm": llm, "status": status}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
     except: pass
     # #endregion
+    
+    # PROTEÇÃO: Sempre retornar algo, mesmo em caso de erro crítico
     try:
         logger.info(f"Listando agentes - search={search}, llm={llm}, status={status}")
         print(f"[API_ADMIN] Listando agentes - search={search}, llm={llm}, status={status}", flush=True)
