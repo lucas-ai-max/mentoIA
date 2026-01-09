@@ -92,7 +92,7 @@ gcloud run deploy $SERVICE_NAME \
   --cpu 2 \
   --timeout 600 \
   --max-instances 10 \
-  --set-env-vars "ALLOWED_ORIGINS=https://seu-app.vercel.app,http://localhost:3000" \
+  --set-env-vars "ALLOWED_ORIGINS=https://web-rust-pi-54.vercel.app,http://localhost:3000" \
   --set-env-vars "SUPABASE_URL=sua-url-supabase" \
   --set-env-vars "SUPABASE_SERVICE_ROLE_KEY=sua-key-supabase"
 ```
@@ -116,7 +116,7 @@ https://mentoia-api-xxxxx-uc.a.run.app
 
 | Variável | Valor | Descrição |
 |----------|-------|-----------|
-| `ALLOWED_ORIGINS` | `https://seu-app.vercel.app,http://localhost:3000` | URLs permitidas para CORS |
+| `ALLOWED_ORIGINS` | `https://web-rust-pi-54.vercel.app,http://localhost:3000` | URLs permitidas para CORS |
 | `SUPABASE_URL` | Sua URL do Supabase | URL do projeto Supabase |
 | `SUPABASE_SERVICE_ROLE_KEY` | Sua chave de serviço | Service role key do Supabase |
 | `OPENAI_API_KEY` | Sua chave OpenAI | (Opcional) Se usar OpenAI |
@@ -148,7 +148,7 @@ gcloud run services update mentoia-api \
 | `GCP_SA_KEY` | Conteúdo completo do arquivo JSON da conta de serviço |
 | `SUPABASE_URL` | URL do Supabase |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key do Supabase |
-| `ALLOWED_ORIGINS` | `https://seu-app.vercel.app,http://localhost:3000` |
+| `ALLOWED_ORIGINS` | `https://web-rust-pi-54.vercel.app,http://localhost:3000` |
 
 ### 4.2 Como obter o conteúdo do GCP_SA_KEY
 
