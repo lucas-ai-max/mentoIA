@@ -177,6 +177,36 @@ app.add_middleware(
 )
 print("[API_SERVER] CORS middleware configurado", flush=True)
 
+# Middleware de logging para capturar todas as requisições e erros
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+import time
+
+class LoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.time()
+        path = request.url.path
+        method = request.method
+        
+        print(f"[MIDDLEWARE] {method} {path} - Início", flush=True)
+        
+        try:
+            response = await call_next(request)
+            process_time = time.time() - start_time
+            print(f"[MIDDLEWARE] {method} {path} - Status: {response.status_code} - Tempo: {process_time:.3f}s", flush=True)
+            return response
+        except Exception as e:
+            process_time = time.time() - start_time
+            import traceback
+            error_traceback = traceback.format_exc()
+            print(f"[MIDDLEWARE] {method} {path} - ERRO após {process_time:.3f}s: {str(e)}", flush=True)
+            print(f"[MIDDLEWARE] Traceback: {error_traceback}", flush=True)
+            raise
+
+app.add_middleware(LoggingMiddleware)
+print("[API_SERVER] Logging middleware configurado", flush=True)
+
 # Adicionar exception handler global para capturar erros não tratados
 from fastapi import Request
 from fastapi.responses import JSONResponse
