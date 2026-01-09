@@ -19,10 +19,10 @@ print("[API_SERVER] OTEL_SDK_DISABLED=" + os.getenv("OTEL_SDK_DISABLED", "não d
 print("[API_SERVER] Iniciando importações...", flush=True)
 
 try:
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Dict, Optional
+    from fastapi import FastAPI, HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
+    from pydantic import BaseModel
+    from typing import List, Dict, Optional
     print("[API_SERVER] FastAPI importado com sucesso", flush=True)
 except Exception as e:
     print(f"[API_SERVER] ERRO ao importar FastAPI: {str(e)}", flush=True)
