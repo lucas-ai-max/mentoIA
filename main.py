@@ -2,10 +2,16 @@
 Servidor API Minimalista - Versão de Emergência
 Apenas rotas básicas mockadas para fazer funcionar
 """
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Log de inicialização
+print("[MAIN] Iniciando servidor minimalista...", flush=True)
+print(f"[MAIN] PORT={os.getenv('PORT', '8080')}", flush=True)
+
 app = FastAPI(title="MentorIA API - Minimal")
+print("[MAIN] FastAPI app criado", flush=True)
 
 # CORS - aceitar tudo temporariamente
 app.add_middleware(
@@ -18,6 +24,7 @@ app.add_middleware(
 
 @app.get("/")
 def root():
+    print("[MAIN] GET / chamado", flush=True)
     return {"status": "ok", "service": "MentorIA API", "version": "minimal"}
 
 @app.get("/health")

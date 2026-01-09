@@ -15,10 +15,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar uv e dependências
-RUN pip install uv
-COPY requirements.txt .
-RUN uv pip install --system --no-cache -r requirements.txt
+# Instalar apenas fastapi e uvicorn (minimalista)
+RUN pip install --no-cache-dir fastapi uvicorn
 
 # Copiar código
 COPY . .
@@ -30,8 +28,5 @@ ENV OTEL_SDK_DISABLED=true
 # Expor porta
 EXPOSE 8080
 
-# Tornar o entrypoint executável
-RUN chmod +x entrypoint.sh
-
-# Usar main.py minimalista
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--timeout-keep-alive", "600"]
+# Usar main.py minimalista - PORT é definido automaticamente pelo Cloud Run
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1
