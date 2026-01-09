@@ -75,6 +75,7 @@ jobs:
           echo "Project: ${PROJECT_ID}"
           
           # Criar arquivo temporário com variáveis de ambiente
+          # NOTA: PORT é definido automaticamente pelo Cloud Run, não deve ser incluído aqui
           cat > /tmp/env-vars.yaml << EOF
           ALLOWED_ORIGINS: "${{ secrets.ALLOWED_ORIGINS }}"
           SUPABASE_URL: "${{ secrets.SUPABASE_URL }}"
@@ -84,7 +85,6 @@ jobs:
           GOOGLE_API_KEY: "placeholder"
           CREWAI_TELEMETRY_OPT_OUT: "true"
           OTEL_SDK_DISABLED: "true"
-          PORT: "8080"
           EOF
           
           gcloud run deploy ${SERVICE_NAME} \
