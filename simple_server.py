@@ -58,6 +58,17 @@ def health():
 def api_health():
     return {"status": "ok", "service": "mentoia-api"}
 
+@app.get("/api/debug")
+def debug_info():
+    """Endpoint de debug para verificar configuração"""
+    return {
+        "status": "ok",
+        "supabase_url_configured": bool(os.getenv("SUPABASE_URL")),
+        "supabase_key_configured": bool(os.getenv("SUPABASE_SERVICE_ROLE_KEY")),
+        "allowed_origins": os.getenv("ALLOWED_ORIGINS", "not set"),
+        "port": os.getenv("PORT", "8080")
+    }
+
 # Rota de agentes - conecta ao Supabase
 @app.get("/api/agents")
 def get_agents():
