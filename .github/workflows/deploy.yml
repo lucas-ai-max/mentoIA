@@ -24,33 +24,59 @@ jobs:
         run: |
           gcloud auth configure-docker southamerica-east1-docker.pkg.dev
       
+      - name: Set project and configure
+        run: |
+          echo "PROJECT_ID=80767420742" >> $GITHUB_ENV
+          echo "REGION=southamerica-east1" >> $GITHUB_ENV
+          echo "SERVICE_NAME=mentoia-api" >> $GITHUB_ENV
+          echo "REPOSITORY=docker-repo" >> $GITHUB_ENV
+          
+          # Configurar projeto padrão
+          gcloud config set project 80767420742
+      
       - name: Build and Push Docker image
         run: |
-          export PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-          export REGION="southamerica-east1"
-          export REPOSITORY="docker-repo"
-          export IMAGE_NAME="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/mentoia-api:${{ github.sha }}"
+          PROJECT_ID="80767420742"
+          REGION="southamerica-east1"
+          REPOSITORY="docker-repo"
+          SERVICE_NAME="mentoia-api"
+          IMAGE_NAME="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE_NAME}:${{ github.sha }}"
+          
+          echo "Building image: ${IMAGE_NAME}"
           
           # Criar repositório se não existir
-          gcloud artifacts repositories create $REPOSITORY \
+          gcloud artifacts repositories create ${REPOSITORY} \
             --repository-format=docker \
-            --location=$REGION \
-            --description="Docker repository for mentoia-api" || true
+            --location=${REGION} \
+            --description="Docker repository for mentoia-api" \
+            --project=${PROJECT_ID} || true
           
-          docker build -t $IMAGE_NAME .
-          docker push $IMAGE_NAME
+          # Build da imagem
+          docker build -t ${IMAGE_NAME} .
+          
+          # Push para Artifact Registry
+          docker push ${IMAGE_NAME}
+          
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
       
       - name: Deploy to Cloud Run
         run: |
-          export PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-          export REGION="southamerica-east1"
-          export REPOSITORY="docker-repo"
-          export IMAGE_NAME="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/mentoia-api:${{ github.sha }}"
+          PROJECT_ID="80767420742"
+          REGION="southamerica-east1"
+          SERVICE_NAME="mentoia-api"
+          REPOSITORY="docker-repo"
+          IMAGE_NAME="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE_NAME}:${{ github.sha }}"
           
-          gcloud run deploy mentoia-api \
-            --image $IMAGE_NAME \
-            --region $REGION \
+          echo "Deploying service: ${SERVICE_NAME}"
+          echo "Image: ${IMAGE_NAME}"
+          echo "Region: ${REGION}"
+          echo "Project: ${PROJECT_ID}"
+          
+          gcloud run deploy ${SERVICE_NAME} \
+            --image ${IMAGE_NAME} \
+            --region ${REGION} \
             --platform managed \
+            --project ${PROJECT_ID} \
             --allow-unauthenticated \
             --memory 2Gi \
             --cpu 2 \
