@@ -112,10 +112,14 @@ https://mentoia-api-xxxxx-uc.a.run.app
 ### 3.2 Ou via linha de comando
 
 ```bash
+# IMPORTANTE: Substitua 'southamerica-east1' pela região onde seu serviço está deployado
+# Para verificar a região: gcloud run services list
 gcloud run services update mentoia-api \
-  --region us-central1 \
-  --update-env-vars "ALLOWED_ORIGINS=https://seu-app.vercel.app,http://localhost:3000,SUPABASE_URL=sua-url,SUPABASE_SERVICE_ROLE_KEY=sua-key"
+  --region southamerica-east1 \
+  --update-env-vars "ALLOWED_ORIGINS=https://web-rust-pi-54.vercel.app,http://localhost:3000,SUPABASE_URL=sua-url,SUPABASE_SERVICE_ROLE_KEY=sua-key"
 ```
+
+**Nota:** O código agora inclui `https://web-rust-pi-54.vercel.app` por padrão, mas você ainda precisa atualizar a variável de ambiente no Cloud Run se já estiver deployado.
 
 ## 🔄 Passo 4: Configurar CI/CD Automático (GitHub Actions)
 

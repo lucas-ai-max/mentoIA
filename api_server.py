@@ -19,10 +19,10 @@ print("[API_SERVER] OTEL_SDK_DISABLED=" + os.getenv("OTEL_SDK_DISABLED", "não d
 print("[API_SERVER] Iniciando importações...", flush=True)
 
 try:
-    from fastapi import FastAPI, HTTPException
-    from fastapi.middleware.cors import CORSMiddleware
-    from pydantic import BaseModel
-    from typing import List, Dict, Optional
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Dict, Optional
     print("[API_SERVER] FastAPI importado com sucesso", flush=True)
 except Exception as e:
     print(f"[API_SERVER] ERRO ao importar FastAPI: {str(e)}", flush=True)
@@ -31,7 +31,7 @@ except Exception as e:
     sys.exit(1)
 
 try:
-    from agents import AGENTES_DISPONIVEIS
+from agents import AGENTES_DISPONIVEIS
     print("[API_SERVER] Agents importado com sucesso", flush=True)
 except Exception as e:
     print(f"[API_SERVER] ERRO ao importar agents: {str(e)}", flush=True)
@@ -42,7 +42,7 @@ except Exception as e:
 
 try:
     print("[API_SERVER] Tentando importar debate_crew...", flush=True)
-    from debate_crew import DebateCrew
+from debate_crew import DebateCrew
     print(f"[API_SERVER] DebateCrew importado com sucesso: {DebateCrew}", flush=True)
     print(f"[API_SERVER] Tipo de DebateCrew: {type(DebateCrew)}", flush=True)
 except Exception as e:
@@ -57,7 +57,7 @@ except Exception as e:
     DebateCrew = None
 
 try:
-    from database import Database
+from database import Database
     print("[API_SERVER] Database importado com sucesso", flush=True)
 except Exception as e:
     print(f"[API_SERVER] ERRO ao importar database: {str(e)}", flush=True)
@@ -99,37 +99,36 @@ async def startup_event():
     global db
     print("[API_SERVER] Startup event: Inicializando Database...", flush=True)
     try:
-        db = Database()
+db = Database()
         print(f"[API_SERVER] Database inicializado: {db}", flush=True)
-        
+
         # Testar conexão (não bloquear se falhar)
-        try:
+try:
             print("[API_SERVER] Testando conexão com banco...", flush=True)
-            if db.test_connection():
+    if db.test_connection():
                 print("[API_SERVER] Conexao com Supabase OK", flush=True)
-                if db.check_tables_exist():
+        if db.check_tables_exist():
                     print("[API_SERVER] Tabelas verificadas", flush=True)
-                else:
+        else:
                     print("[API_SERVER] AVISO: Tabelas podem nao existir. Execute supabase_schema.sql no Supabase", flush=True)
-            else:
+    else:
                 print("[API_SERVER] Aviso: Problemas na conexao com o banco de dados", flush=True)
         except Exception as e:
             print(f"[API_SERVER] Erro ao testar conexao: {str(e)}", flush=True)
             import traceback
             traceback.print_exc()
-    except Exception as e:
+except Exception as e:
         print(f"[API_SERVER] ERRO ao inicializar Database: {str(e)}", flush=True)
-        import traceback
-        traceback.print_exc()
+    import traceback
+    traceback.print_exc()
         print("[API_SERVER] AVISO: Continuando sem Database. Algumas funcionalidades podem não funcionar.", flush=True)
 
 # CORS para permitir requisições do frontend
 # Obter origens permitidas das variáveis de ambiente
-ALLOWED_ORIGINS_STR = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost:3000,http://127.0.0.1:3000"
-)
-ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_STR.split(",")]
+# Default inclui localhost e o domínio Vercel de produção
+DEFAULT_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000,https://web-rust-pi-54.vercel.app"
+ALLOWED_ORIGINS_STR = os.getenv("ALLOWED_ORIGINS", DEFAULT_ORIGINS)
+ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_STR.split(",") if origin.strip()]
 
 print(f"[API_SERVER] CORS configurado para origens: {ALLOWED_ORIGINS}")
 
@@ -416,9 +415,9 @@ async def start_debate(request: DebateRequest):
             # Ignorar síntese e sintese_conteudo - serão processadas separadamente
             if item["tipo"] in ["sintese", "sintese_conteudo"]:
                 if item["tipo"] == "sintese_conteudo" and summary_mode:
-                    sintese_final = item["conteudo"]
-                    print(f"[DEBATE] Sintese encontrada: {len(sintese_final)} caracteres")
-                    print(f"[DEBATE] Primeiros 200 caracteres: {sintese_final[:200]}...")
+                sintese_final = item["conteudo"]
+                print(f"[DEBATE] Sintese encontrada: {len(sintese_final)} caracteres")
+                print(f"[DEBATE] Primeiros 200 caracteres: {sintese_final[:200]}...")
                 continue
             
             # Para respostas, verificar se o agente está nos selecionados
@@ -451,20 +450,20 @@ async def start_debate(request: DebateRequest):
         # Salvar debate no banco de dados
         debate_id = None
         if request.salvar:
-            try:
+        try:
                 if not db:
                     raise HTTPException(status_code=503, detail="Database não disponível. Não foi possível salvar o debate.")
-                debate_id = db.save_debate(
+            debate_id = db.save_debate(
                 pergunta=request.pergunta,
                 selected_agents=request.agentes,
                 num_rodadas=request.num_rodadas,
                 historico=historico,
                 sintese=sintese_final
-                )
-                print(f"[DEBATE] Debate salvo no banco com ID: {debate_id}")
-            except Exception as db_error:
-                print(f"[DEBATE] ERRO CRITICO ao salvar no banco: {str(db_error)}")
-                print(f"[DEBATE] Tipo do erro: {type(db_error).__name__}")
+            )
+            print(f"[DEBATE] Debate salvo no banco com ID: {debate_id}")
+        except Exception as db_error:
+            print(f"[DEBATE] ERRO CRITICO ao salvar no banco: {str(db_error)}")
+            print(f"[DEBATE] Tipo do erro: {type(db_error).__name__}")
             import traceback
             traceback.print_exc()
             debate_id = None
