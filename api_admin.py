@@ -4,7 +4,6 @@ API de administração para gerenciar agentes e configurações
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
-from database import Database, DEFAULT_SYSTEM_SETTINGS
 from datetime import datetime
 import hashlib
 import uuid
@@ -12,6 +11,20 @@ import os
 import re
 
 print("[API_ADMIN] Carregando modulo api_admin...")
+
+# LAZY IMPORT - Não importar Database no nível do módulo para acelerar startup
+Database = None
+DEFAULT_SYSTEM_SETTINGS = None
+
+def _import_database():
+    """Importa Database apenas quando necessário"""
+    global Database, DEFAULT_SYSTEM_SETTINGS
+    if Database is None:
+        print("[API_ADMIN] Importando Database (lazy)...", flush=True)
+        from database import Database as DB, DEFAULT_SYSTEM_SETTINGS as DSS
+        Database = DB
+        DEFAULT_SYSTEM_SETTINGS = DSS
+    return Database, DEFAULT_SYSTEM_SETTINGS
 
 # ⚠️ CRÍTICO: Router sempre deve ser criado, mesmo se Database falhar
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -27,7 +40,7 @@ def get_db():
     Lazy initialization do Database.
     Retorna a instância do Database ou levanta HTTPException se não disponível.
     """
-    global _db_instance, _db_error
+    global _db_instance, _db_error, Database
     
     if _db_instance is not None:
         return _db_instance
@@ -39,9 +52,12 @@ def get_db():
             detail=f"Database não disponível: {str(_db_error)}"
         )
     
+    # Importar Database se necessário
+    DB, _ = _import_database()
+    
     # Tentar inicializar pela primeira vez
     try:
-        _db_instance = Database()
+        _db_instance = DB()
         print("[API_ADMIN] Database inicializado (lazy)")
         return _db_instance
     except Exception as e:
@@ -163,16 +179,17 @@ def _hash_admin_password(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 def _sanitize_settings_for_response(settings: Dict[str, Any]) -> Dict[str, Any]:
-    debate_config = settings.get("debate_config", DEFAULT_SYSTEM_SETTINGS["debate_config"])
-    api_limits = settings.get("api_limits", DEFAULT_SYSTEM_SETTINGS["api_limits"])
+    _, DSS = _import_database()
+    debate_config = settings.get("debate_config", DSS["debate_config"])
+    api_limits = settings.get("api_limits", DSS["api_limits"])
     security = settings.get("security", {})
     return {
         "debate_config": debate_config,
         "api_limits": api_limits,
         "security": {
             "admin_password_set": bool(security.get("admin_password_hash")),
-            "enable_2fa": security.get("enable_2fa", DEFAULT_SYSTEM_SETTINGS["security"]["enable_2fa"]),
-            "log_activities": security.get("log_activities", DEFAULT_SYSTEM_SETTINGS["security"]["log_activities"]),
+            "enable_2fa": security.get("enable_2fa", DSS["security"]["enable_2fa"]),
+            "log_activities": security.get("log_activities", DSS["security"]["log_activities"]),
         },
     }
 
@@ -790,10 +807,10 @@ async def get_dashboard_stats():
                     config = provider_data.get("config", {}) or {}
                     enabled_models = config.get("enabled_models", [])
                     if enabled_models:
-                        if provider not in provider_models:
-                            provider_models[provider] = set()
+                    if provider not in provider_models:
+                        provider_models[provider] = set()
                         for model in enabled_models:
-                            provider_models[provider].add(model)
+                        provider_models[provider].add(model)
         
         # Formatar lista de LLMs
         llms_list = []
